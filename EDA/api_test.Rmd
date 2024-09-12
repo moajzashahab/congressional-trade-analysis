@@ -1,0 +1,88 @@
+---
+title: "API Testing"
+output: html_notebook
+---
+
+## Introduction
+
+This notebook is testing whether or not we can pull congressional trade data from an API for free. We'll test the following websites:
+
+- [FMP](https://site.financialmodelingprep.com/)
+  - [Documentaion Here](https://site.financialmodelingprep.com/developer/docs#senate)
+- [Finnhub](https://finnhub.io/)
+  - [Documentaion Here](https://finnhub.io/docs/api/congressional-trading)
+- [Benzinga APIs](https://www.benzinga.com/apis/)
+  - [Documentaion Here](https://www.benzinga.com/apis/cloud-product/government-trades/)
+- [House Stock Watcher](https://housestockwatcher.com/)
+  - [Documentaion Here](https://housestockwatcher.com/api)
+
+```{r Libraries + API Keys}
+# load libraries
+library(httr)
+library(dotenv)
+library(jsonlite)
+
+# load .env file
+load_dot_env("../.env")
+
+# read in API Keys
+fmp_api_key <- Sys.getenv("FMP_API_KEY")
+finnhub_api_key <- Sys.getenv("FINNHUB_API_KEY")
+benzinga_api_key <- Sys.getenv("BENZINGA_API_KEY")
+```
+
+### Test FMP
+
+```{r}
+headers = c(`Upgrade-Insecure-Requests` = '1')
+params = list(`datatype` = 'json')
+
+# url for senate trading api by stock
+trades_url <- sprintf('https://financialmodelingprep.com/api/v4/senate-trading?symbol=AAPL&apikey=%s', fmp_api_key)
+# url for senate disclosure rss feed
+rss_url <- sprintf('https://financialmodelingprep.com/api/v4/senate-disclosure-rss-feed?page=0&apikey=%s', fmp_api_key)
+
+# this one is not available under the free subscription pland
+# response <- GET(trades_url , add_headers(.headers=headers), query = params)
+
+# this one is not available under the free subscription plan
+response <- GET(rss_url , add_headers(.headers=headers), query=params)
+
+print(response)
+```
+### Test Finnhub
+
+```{r}
+url <- sprintf('https://finnhub.io/api/v1/stock/congressional-trading?symbol=AAPL&token=%s', finnhub_api_key)
+
+response <- GET(url)
+
+# returning 401 unauthorized error so probably can't use this one either
+print(response)
+```
+
+### Test Benzinga
+
+```{r}
+url <- "https://api.benzinga.com/api/v1/gov/usa/congress/trades"
+params <- list(token=benzinga_api_key)
+
+response <- GET(url, query=query_params)
+
+# returning 401 unauthorized error so probably can't use this one either
+print(response)
+```
+Even though I can't seem to pull the data via API I can get a response from [here](https://docs.benzinga.com/benzinga-apis/government-trades/get-trades) in the browser using the API token. Can always use the browser to manually pull data if needed.
+
+### Test House Stock Watcher
+
+```{r}
+url <- "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json"
+  
+response <- GET(url)
+
+data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
+
+head(data)
+```
+This one seems to work and also has an option to do a manual download via the browser. 
