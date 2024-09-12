@@ -1780,16 +1780,19 @@ Here</a></li>
 </ul>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBsb2FkIGxpYnJhcmllc1xubGlicmFyeShodHRyKVxubGlicmFyeShkb3RlbnYpXG5cbiMgbG9hZCAuZW52IGZpbGVcbmxvYWRfZG90X2VudihcIi4uLy5lbnZcIilcblxuIyByZWFkIGluIEFQSSBLZXlzXG5mbXBfYXBpX2tleSA8LSBTeXMuZ2V0ZW52KFwiRk1QX0FQSV9LRVlcIilcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBsb2FkIGxpYnJhcmllc1xubGlicmFyeShodHRyKVxubGlicmFyeShkb3RlbnYpXG5saWJyYXJ5KGpzb25saXRlKVxuXG4jIGxvYWQgLmVudiBmaWxlXG5sb2FkX2RvdF9lbnYoXCIuLi8uZW52XCIpXG5cbiMgcmVhZCBpbiBBUEkgS2V5c1xuZm1wX2FwaV9rZXkgPC0gU3lzLmdldGVudihcIkZNUF9BUElfS0VZXCIpXG5maW5uaHViX2FwaV9rZXkgPC0gU3lzLmdldGVudihcIkZJTk5IVUJfQVBJX0tFWVwiKVxuYmVuemluZ2FfYXBpX2tleSA8LSBTeXMuZ2V0ZW52KFwiQkVOWklOR0FfQVBJX0tFWVwiKVxuYGBgIn0= -->
 <pre class="r"><code># load libraries
 library(httr)
 library(dotenv)
+library(jsonlite)
 
 # load .env file
 load_dot_env(&quot;../.env&quot;)
 
 # read in API Keys
-fmp_api_key &lt;- Sys.getenv(&quot;FMP_API_KEY&quot;)</code></pre>
+fmp_api_key &lt;- Sys.getenv(&quot;FMP_API_KEY&quot;)
+finnhub_api_key &lt;- Sys.getenv(&quot;FINNHUB_API_KEY&quot;)
+benzinga_api_key &lt;- Sys.getenv(&quot;BENZINGA_API_KEY&quot;)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1797,23 +1800,26 @@ fmp_api_key &lt;- Sys.getenv(&quot;FMP_API_KEY&quot;)</code></pre>
 <h3>Test FMP</h3>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaGVhZGVycyA9IGMoYFVwZ3JhZGUtSW5zZWN1cmUtUmVxdWVzdHNgID0gJzEnKVxucGFyYW1zID0gbGlzdChgZGF0YXR5cGVgID0gJ2pzb24nKVxuXG4jIHVybCBmb3Igc2VuYXRlIGRpc2Nsb3N1cmUgcnNzIGZlZWRcbiMgdGhpcyBvbmUgaXMgbm90IGF2YWlsYWJsZSB1bmRlciB0aGUgZnJlZSBzdWJzY3JpcHRpb24gcGxhbmRcbiNyZXMgPC0gaHR0cjo6R0VUKHVybCA9IHNwcmludGYoJ2h0dHBzOi8vZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS9hcGkvdjQvc2VuYXRlLWRpc2Nsb3N1cmUtcnNzLWZlZWQ/cGFnZT0wJmFwaWtleT0lcycsIGZtcF9hcGlfa2V5KSwgaHR0cjo6YWRkX2hlYWRlcnMoLmhlYWRlcnM9aGVhZGVycyksIHF1ZXJ5ID0gcGFyYW1zKVxuXG4jIHVybCBmb3Igc2VuYXRlIHRyYWRpbmcgYXBpIGJ5IHN0b2NrXG4jIHRoaXMgb25lIGlzIG5vdCBhdmFpbGFibGUgdW5kZXIgdGhlIGZyZWUgc3Vic2NyaXB0aW9uIHBsYW5kXG5yZXMgPC0gaHR0cjo6R0VUKHVybCA9IHNwcmludGYoJ2h0dHBzOi8vZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS9hcGkvdjQvc2VuYXRlLXRyYWRpbmc/c3ltYm9sPUFBUEwmYXBpa2V5PSVzJywgZm1wX2FwaV9rZXkpLCBodHRyOjphZGRfaGVhZGVycyguaGVhZGVycz1oZWFkZXJzKSwgcXVlcnkgPSBwYXJhbXMpXG5cbnByaW50KHJlcylcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaGVhZGVycyA9IGMoYFVwZ3JhZGUtSW5zZWN1cmUtUmVxdWVzdHNgID0gJzEnKVxucGFyYW1zID0gbGlzdChgZGF0YXR5cGVgID0gJ2pzb24nKVxuXG4jIHVybCBmb3Igc2VuYXRlIHRyYWRpbmcgYXBpIGJ5IHN0b2NrXG50cmFkZXNfdXJsIDwtIHNwcmludGYoJ2h0dHBzOi8vZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS9hcGkvdjQvc2VuYXRlLXRyYWRpbmc/c3ltYm9sPUFBUEwmYXBpa2V5PSVzJywgZm1wX2FwaV9rZXkpXG4jIHVybCBmb3Igc2VuYXRlIGRpc2Nsb3N1cmUgcnNzIGZlZWRcbnJzc191cmwgPC0gc3ByaW50ZignaHR0cHM6Ly9maW5hbmNpYWxtb2RlbGluZ3ByZXAuY29tL2FwaS92NC9zZW5hdGUtZGlzY2xvc3VyZS1yc3MtZmVlZD9wYWdlPTAmYXBpa2V5PSVzJywgZm1wX2FwaV9rZXkpXG5cbiMgdGhpcyBvbmUgaXMgbm90IGF2YWlsYWJsZSB1bmRlciB0aGUgZnJlZSBzdWJzY3JpcHRpb24gcGxhbmRcbiMgcmVzcG9uc2UgPC0gR0VUKHRyYWRlc191cmwgLCBhZGRfaGVhZGVycyguaGVhZGVycz1oZWFkZXJzKSwgcXVlcnkgPSBwYXJhbXMpXG5cbiMgdGhpcyBvbmUgaXMgbm90IGF2YWlsYWJsZSB1bmRlciB0aGUgZnJlZSBzdWJzY3JpcHRpb24gcGxhblxucmVzcG9uc2UgPC0gR0VUKHJzc191cmwgLCBhZGRfaGVhZGVycyguaGVhZGVycz1oZWFkZXJzKSwgcXVlcnk9cGFyYW1zKVxuXG5wcmludChyZXNwb25zZSlcbmBgYCJ9 -->
 <pre class="r"><code>headers = c(`Upgrade-Insecure-Requests` = &#39;1&#39;)
 params = list(`datatype` = &#39;json&#39;)
 
-# url for senate disclosure rss feed
-# this one is not available under the free subscription pland
-#res &lt;- httr::GET(url = sprintf(&#39;https://financialmodelingprep.com/api/v4/senate-disclosure-rss-feed?page=0&amp;apikey=%s&#39;, fmp_api_key), httr::add_headers(.headers=headers), query = params)
-
 # url for senate trading api by stock
-# this one is not available under the free subscription pland
-res &lt;- httr::GET(url = sprintf(&#39;https://financialmodelingprep.com/api/v4/senate-trading?symbol=AAPL&amp;apikey=%s&#39;, fmp_api_key), httr::add_headers(.headers=headers), query = params)
+trades_url &lt;- sprintf(&#39;https://financialmodelingprep.com/api/v4/senate-trading?symbol=AAPL&amp;apikey=%s&#39;, fmp_api_key)
+# url for senate disclosure rss feed
+rss_url &lt;- sprintf(&#39;https://financialmodelingprep.com/api/v4/senate-disclosure-rss-feed?page=0&amp;apikey=%s&#39;, fmp_api_key)
 
-print(res)</code></pre>
+# this one is not available under the free subscription pland
+# response &lt;- GET(trades_url , add_headers(.headers=headers), query = params)
+
+# this one is not available under the free subscription plan
+response &lt;- GET(rss_url , add_headers(.headers=headers), query=params)
+
+print(response)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiUmVzcG9uc2UgW2h0dHBzOi8vZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS9hcGkvdjQvc2VuYXRlLXRyYWRpbmc/c3ltYm9sPUFBUEwmYXBpa2V5PVVTWUMxRm16aUVVUTJLWE9TNDFkZldUbXlXeWhFUEgwJmRhdGF0eXBlPWpzb25dXG4gIERhdGU6IDIwMjQtMDktMTIgMTY6MDFcbiAgU3RhdHVzOiA0MDNcbiAgQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9qc29uOyBjaGFyc2V0PXV0Zi04XG4gIFNpemU6IDIyNyBCXG57XG4gIFwiRXJyb3IgTWVzc2FnZVwiOiBcIlNwZWNpYWwgRW5kcG9pbnQgOiBUaGlzIGVuZHBvaW50IGlzIG5vdCBhdmFpbGFibGUgdW5kZXIgeW91ciBjdXJyZW50IHN1YnNjcmlwdGlvbiBwbGVhc2UgdmlzaXQgb3VyIHN1YnNjcmlwdC4uLlxuIn0= -->
-<pre><code>Response [https://financialmodelingprep.com/api/v4/senate-trading?symbol=AAPL&amp;apikey=USYC1FmziEUQ2KXOS41dfWTmyWyhEPH0&amp;datatype=json]
-  Date: 2024-09-12 16:01
+<!-- rnb-output-begin eyJkYXRhIjoiUmVzcG9uc2UgW2h0dHBzOi8vZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS9hcGkvdjQvc2VuYXRlLWRpc2Nsb3N1cmUtcnNzLWZlZWQ/cGFnZT0wJmFwaWtleT1VU1lDMUZtemlFVVEyS1hPUzQxZGZXVG15V3loRVBIMCZkYXRhdHlwZT1qc29uXVxuICBEYXRlOiAyMDI0LTA5LTEyIDE3OjIzXG4gIFN0YXR1czogNDAzXG4gIENvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvbjsgY2hhcnNldD11dGYtOFxuICBTaXplOiAyMjcgQlxue1xuICBcIkVycm9yIE1lc3NhZ2VcIjogXCJTcGVjaWFsIEVuZHBvaW50IDogVGhpcyBlbmRwb2ludCBpcyBub3QgYXZhaWxhYmxlIHVuZGVyIHlvdXIgY3VycmVudCBzdWJzY3JpcHRpb24gcGxlYXNlIHZpc2l0IG91ciBzdWJzY3JpcHQuLi5cbiJ9 -->
+<pre><code>Response [https://financialmodelingprep.com/api/v4/senate-disclosure-rss-feed?page=0&amp;apikey=USYC1FmziEUQ2KXOS41dfWTmyWyhEPH0&amp;datatype=json]
+  Date: 2024-09-12 17:23
   Status: 403
   Content-Type: application/json; charset=utf-8
   Size: 227 B
@@ -1827,6 +1833,21 @@ print(res)</code></pre>
 <h3>Test Finnhub</h3>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudXJsIDwtIHNwcmludGYoJ2h0dHBzOi8vZmlubmh1Yi5pby9hcGkvdjEvc3RvY2svY29uZ3Jlc3Npb25hbC10cmFkaW5nP3N5bWJvbD1BQVBMJnRva2VuPSVzJywgZmlubmh1Yl9hcGlfa2V5KVxuXG5yZXNwb25zZSA8LSBHRVQodXJsKVxuXG4jIHJldHVybmluZyA0MDEgdW5hdXRob3JpemVkIGVycm9yIHNvIHByb2JhYmx5IGNhbid0IHVzZSB0aGlzIG9uZSBlaXRoZXJcbnByaW50KHJlc3BvbnNlKVxuYGBgIn0= -->
+<pre class="r"><code>url &lt;- sprintf(&#39;https://finnhub.io/api/v1/stock/congressional-trading?symbol=AAPL&amp;token=%s&#39;, finnhub_api_key)
+
+response &lt;- GET(url)
+
+# returning 401 unauthorized error so probably can&#39;t use this one either
+print(response)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiUmVzcG9uc2UgW2h0dHBzOi8vZmlubmh1Yi5pby9hcGkvdjEvc3RvY2svY29uZ3Jlc3Npb25hbC10cmFkaW5nP3N5bWJvbD1BQVBMJnRva2VuPV1cbiAgRGF0ZTogMjAyNC0wOS0xMiAxNzoyM1xuICBTdGF0dXM6IDQwMVxuICBDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL2pzb25cbiAgU2l6ZTogMzQgQlxuIn0= -->
+<pre><code>Response [https://finnhub.io/api/v1/stock/congressional-trading?symbol=AAPL&amp;token=]
+  Date: 2024-09-12 17:23
+  Status: 401
+  Content-Type: application/json
+  Size: 34 B</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
@@ -1834,18 +1855,60 @@ print(res)</code></pre>
 <h3>Test Benzinga</h3>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudXJsIDwtIFwiaHR0cHM6Ly9hcGkuYmVuemluZ2EuY29tL2FwaS92MS9nb3YvdXNhL2NvbmdyZXNzL3RyYWRlc1wiXG5wYXJhbXMgPC0gbGlzdCh0b2tlbj1iZW56aW5nYV9hcGlfa2V5KVxuXG5yZXNwb25zZSA8LSBHRVQodXJsLCBxdWVyeT1xdWVyeV9wYXJhbXMpXG5cbiMgcmV0dXJuaW5nIDQwMSB1bmF1dGhvcml6ZWQgZXJyb3Igc28gcHJvYmFibHkgY2FuJ3QgdXNlIHRoaXMgb25lIGVpdGhlclxucHJpbnQocmVzcG9uc2UpXG5gYGAifQ== -->
+<pre class="r"><code>url &lt;- &quot;https://api.benzinga.com/api/v1/gov/usa/congress/trades&quot;
+params &lt;- list(token=benzinga_api_key)
+
+response &lt;- GET(url, query=query_params)
+
+# returning 401 unauthorized error so probably can&#39;t use this one either
+print(response)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiUmVzcG9uc2UgW2h0dHBzOi8vYXBpLmJlbnppbmdhLmNvbS9hcGkvdjEvZ292L3VzYS9jb25ncmVzcy90cmFkZXM/dG9rZW49XVxuICBEYXRlOiAyMDI0LTA5LTEyIDE3OjIzXG4gIFN0YXR1czogNDAxXG4gIENvbnRlbnQtVHlwZTogYXBwbGljYXRpb24veG1sXG4gIFNpemU6IDEwMCBCXG48QklOQVJZIEJPRFk+XG5OVUxMXG4ifQ== -->
+<pre><code>Response [https://api.benzinga.com/api/v1/gov/usa/congress/trades?token=]
+  Date: 2024-09-12 17:23
+  Status: 401
+  Content-Type: application/xml
+  Size: 100 B
+&lt;BINARY BODY&gt;
+NULL</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
+<p>Even though I can’t seem to pull the data via API I can get a
+response from <a href="https://docs.benzinga.com/benzinga-apis/government-trades/get-trades">here</a>
+in the browser using the API token. Can always use the browser to
+manually pull data if needed.</p>
 </div>
 <div id="test-house-stock-watcher" class="section level3">
 <h3>Test House Stock Watcher</h3>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudXJsIDwtIFwiaHR0cHM6Ly9ob3VzZS1zdG9jay13YXRjaGVyLWRhdGEuczMtdXMtd2VzdC0yLmFtYXpvbmF3cy5jb20vZGF0YS9hbGxfdHJhbnNhY3Rpb25zLmpzb25cIlxuICBcbnJlc3BvbnNlIDwtIEdFVCh1cmwpXG5cbmRhdGEgPC0gZnJvbUpTT04oY29udGVudChyZXNwb25zZSwgYXMgPSBcInRleHRcIiwgZW5jb2RpbmcgPSBcIlVURi04XCIpKVxuXG5oZWFkKGRhdGEpXG5gYGAifQ== -->
+<pre class="r"><code>url &lt;- &quot;https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json&quot;
+  
+response &lt;- GET(url)
+
+data &lt;- fromJSON(content(response, as = &quot;text&quot;, encoding = &quot;UTF-8&quot;))
+
+head(data)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-frame-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbImRhdGEuZnJhbWUiXSwibnJvdyI6NiwibmNvbCI6MTYsInN1bW1hcnkiOltdfSwicmRmIjoiSDRzSUFBQUFBQUFBQSsxVzNXL2JOaEJYL0pYVVcxWUhSYnVpd0FCaDZPTmtTVTZNTkgyekhRZklsbVJHa2dWNUV4aUt0bG5UcEVCU2p2MjJmM2IvUnRlVEpTcTJuR0hwbXNjWm9IWDM0MzN3anVRZEw0OXY5K3UzZGN1eXlsYWxYTExLVlNDdDZoL1hKODRIeTZxVWdObXlLdGFMNURzSG9WZEFOR0Rzd3FoWjF2WmZqNCtsVEMxVHJQdWU2eDI0TGEvbFB6dlNjajAvUlFvK0U4enhqcHpXWVJIeDl6Y1FiMFBydzRiTXVoMi81WGhGbjlWUGduTDlkVXhGRVRaY24xZzNXdW9PTXFwOCsvdTUwVG85RzF3YmdZRkJ5OTJ6M3d6WnVSMFVETlc2QXp0aU9PTis3TS9uZ3R2bjRvNHl1eWRrSkNUU1ZQQnMrdXlVaDdIU2tpSm1uNGtSVlpwaVpRK2tpSWpVbENqN1dzSzA3WURxZEFwMnJzWklBaXFHZHBkd01xUTRVVHpsbWdCcVFyVUhZOG9ZamNDcGxGU2wwM3pwZFNsc2xyYmJaUWhQTGdXZXJJQnZPMU1pS1ViYzdzOGpNS29TenhIaWkwS1VPMUVzOFJncDhoLzU3eFZpSklnUVJJblloc3k2cjhaNy94ZlA4eUVMNy8wMlVONi80SHNwdTV4b2UwK1plTHFIOVpYdDNsQTVvcHdpKzBUTTU4OEQ3blVZWlArcUNlZmhubkE5enRQenVxTTBISUhqWkJ0RCt4ejNFUjVUWGxoUjVhTG50YitHN25VT3pJMnIzSFM4ZytLMXVPZzlqZXAxREhYVEtkajRkYXgxcEQ2NmJrZ1Zaa0xGY0s0Y3pJaWNOTWNpVnFRNUVqTTNpdThZeFVFaTRrWmFPbEU0Vk11Q0EzK2VmOVJ1SHpZQit0L2l0MW84OUo3WjR0RithaEVxZHRxci92RzNlaWJlSmxWcEJMV1FoTFpZbHNha3lrREZlK0w4VDVjRWlsbGZhWkNBOGpXRDhqZUYyNUxXU3lQMCtnVEpLZVVqOTRxUVVMbm5TVm5rbzJ6eTV4V3RMdUlUSXBYYmxXTDV2U0p5UnJHcFZlOU9LRWNjazQrd0NxNWlLSkIySnFDS3RiL1BpUnd0SHVXK1cxbXhXVjl1NzBKdzV6aVc2STdsRVc1blhvdHNvZjlla25SL0VQOG1aT2VZVEFXR2ZHL3c2NCtUS2tmVFBPeEdCcjU4T0Q3QmdpRDVDQncrUk4zUUVuR0ZjTktRVnZHcXVJZDhtZHhCSTV6azNCNVNpdWdnSkFwTEdxMzB6NHBlUkVhL2hxWWl6aHYrRDVJay9RdDJGenJmTEc5RHNDVG90amgvSTZ4dXh3NmM3Z0JPeUNUajMyQVVCU05FdVFyRWpNZ0FqbnNRcTlCSTA3UjE1N3V0Q05iQ3JMaWF0TFpGSVhrdnBMaHZtZ1FtTDd2U24rbk5xQld6akJsRW5HWFpnSFhJRldvT0plZ0Q5N21nc2kyV2VRR2xVdkoyckJhVXQyUUJlQm56WkNXaGc4Y3huemp0N1A1dVpXTTMrOVpXNkVicXN2UjNacXBxSWljY3VsaStqUXpkRVpidkFteHFFbkF6a2crUHNUcWdxcW1Gem50YkhRdG1rR1ZzMXVjdjNDQzJmaklMQUFBPSJ9 -->
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["disclosure_year"],"name":[1],"type":["int"],"align":["right"]},{"label":["disclosure_date"],"name":[2],"type":["chr"],"align":["left"]},{"label":["transaction_date"],"name":[3],"type":["chr"],"align":["left"]},{"label":["owner"],"name":[4],"type":["chr"],"align":["left"]},{"label":["ticker"],"name":[5],"type":["chr"],"align":["left"]},{"label":["asset_description"],"name":[6],"type":["chr"],"align":["left"]},{"label":["type"],"name":[7],"type":["chr"],"align":["left"]},{"label":["amount"],"name":[8],"type":["chr"],"align":["left"]},{"label":["representative"],"name":[9],"type":["chr"],"align":["left"]},{"label":["district"],"name":[10],"type":["chr"],"align":["left"]},{"label":["state"],"name":[11],"type":["chr"],"align":["left"]},{"label":["ptr_link"],"name":[12],"type":["chr"],"align":["left"]},{"label":["cap_gains_over_200_usd"],"name":[13],"type":["lgl"],"align":["right"]},{"label":["industry"],"name":[14],"type":["chr"],"align":["left"]},{"label":["sector"],"name":[15],"type":["chr"],"align":["left"]},{"label":["party"],"name":[16],"type":["chr"],"align":["left"]}],"data":[{"1":"2021","2":"10/04/2021","3":"2021-09-27","4":"joint","5":"BP","6":"BP plc","7":"purchase","8":"$1,001 - $15,000","9":"Virginia Foxx","10":"NC05","11":"NC","12":"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20019557.pdf","13":"FALSE","14":"Integrated oil Companies","15":"Energy","16":"Republican","_rn_":"1"},{"1":"2021","2":"10/04/2021","3":"2021-09-13","4":"joint","5":"XOM","6":"Exxon Mobil Corporation","7":"purchase","8":"$1,001 - $15,000","9":"Virginia Foxx","10":"NC05","11":"NC","12":"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20019557.pdf","13":"FALSE","14":"Integrated oil Companies","15":"Energy","16":"Republican","_rn_":"2"},{"1":"2021","2":"10/04/2021","3":"2021-09-10","4":"joint","5":"ILPT","6":"Industrial Logistics Properties Trust - Common Shares of Beneficial Interest","7":"purchase","8":"$15,001 - $50,000","9":"Virginia Foxx","10":"NC05","11":"NC","12":"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20019557.pdf","13":"FALSE","14":"Real Estate Investment Trusts","15":"Real Estate","16":"Republican","_rn_":"3"},{"1":"2021","2":"10/04/2021","3":"2021-09-28","4":"joint","5":"PM","6":"Phillip Morris International Inc","7":"purchase","8":"$15,001 - $50,000","9":"Virginia Foxx","10":"NC05","11":"NC","12":"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20019557.pdf","13":"FALSE","14":"Farming/Seeds/Milling","15":"Consumer Non-Durables","16":"Republican","_rn_":"4"},{"1":"2021","2":"10/04/2021","3":"2021-09-17","4":"self","5":"BLK","6":"BlackRock Inc","7":"sale_partial","8":"$1,001 - $15,000","9":"Alan S. Lowenthal","10":"CA47","11":"CA","12":"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20019570.pdf","13":"FALSE","14":"Investment Bankers/Brokers/Service","15":"Finance","16":"Democrat","_rn_":"5"},{"1":"2021","2":"12/01/2021","3":"2021-12-01","4":"joint","5":"AXP","6":"American Express Company","7":"purchase","8":"$1,001 - $15,000","9":"Aston Donald McEachin","10":"VA04","11":"VA","12":"https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20019930.pdf","13":"FALSE","14":"Finance: Consumer Services","15":"Finance","16":"Democrat","_rn_":"6"}],"options":{"columns":{"min":{},"max":[10],"total":[16]},"rows":{"min":[10],"max":[10],"total":[6]},"pages":{}}}
+  </script>
+</div>
+<!-- rnb-frame-end -->
 <!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>This one seems to work and also has an option to do a manual download
+via the browser.</p>
+<!-- rnb-text-end -->
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiQVBJIFRlc3RpbmciCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCiMjIEludHJvZHVjdGlvbgoKVGhpcyBub3RlYm9vayBpcyB0ZXN0aW5nIHdoZXRoZXIgb3Igbm90IHdlIGNhbiBwdWxsIGNvbmdyZXNzaW9uYWwgdHJhZGUgZGF0YSBmcm9tIGFuIEFQSSBmb3IgZnJlZS4gV2UnbGwgdGVzdCB0aGUgZm9sbG93aW5nIHdlYnNpdGVzOgoKLSBbRk1QXShodHRwczovL3NpdGUuZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS8pCiAgLSBbRG9jdW1lbnRhaW9uIEhlcmVdKGh0dHBzOi8vc2l0ZS5maW5hbmNpYWxtb2RlbGluZ3ByZXAuY29tL2RldmVsb3Blci9kb2NzI3NlbmF0ZSkKLSBbRmlubmh1Yl0oaHR0cHM6Ly9maW5uaHViLmlvLykKICAtIFtEb2N1bWVudGFpb24gSGVyZV0oaHR0cHM6Ly9maW5uaHViLmlvL2RvY3MvYXBpL2NvbmdyZXNzaW9uYWwtdHJhZGluZykKLSBbQmVuemluZ2EgQVBJc10oaHR0cHM6Ly93d3cuYmVuemluZ2EuY29tL2FwaXMvKQogIC0gW0RvY3VtZW50YWlvbiBIZXJlXShodHRwczovL3d3dy5iZW56aW5nYS5jb20vYXBpcy9jbG91ZC1wcm9kdWN0L2dvdmVybm1lbnQtdHJhZGVzLykKLSBbSG91c2UgU3RvY2sgV2F0Y2hlcl0oaHR0cHM6Ly9ob3VzZXN0b2Nrd2F0Y2hlci5jb20vKQogIC0gW0RvY3VtZW50YWlvbiBIZXJlXShodHRwczovL2hvdXNlc3RvY2t3YXRjaGVyLmNvbS9hcGkpCgpgYGB7ciBMaWJyYXJpZXMgKyBBUEkgS2V5c30KIyBsb2FkIGxpYnJhcmllcwpsaWJyYXJ5KGh0dHIpCmxpYnJhcnkoZG90ZW52KQoKIyBsb2FkIC5lbnYgZmlsZQpsb2FkX2RvdF9lbnYoIi4uLy5lbnYiKQoKIyByZWFkIGluIEFQSSBLZXlzCmZtcF9hcGlfa2V5IDwtIFN5cy5nZXRlbnYoIkZNUF9BUElfS0VZIikKZmlubmh1Yl9hcGlfa2V5IDwtIFN5cy5nZXRlbnYoIkZJTk5IVUJfQVBJX0tFWSIpCmJlbnppbmdhX2FwaV9rZXkgPC0gU3lzLmdldGVudigiQkVOWklOR0FfQVBJX0tFWSIpCmhzd19hcGlfa2V5IDwtIFN5cy5nZXRlbnYoIkhTV19BUElfS0VZIikKYGBgCgojIyMgVGVzdCBGTVAKCmBgYHtyfQpoZWFkZXJzID0gYyhgVXBncmFkZS1JbnNlY3VyZS1SZXF1ZXN0c2AgPSAnMScpCnBhcmFtcyA9IGxpc3QoYGRhdGF0eXBlYCA9ICdqc29uJykKCiMgdXJsIGZvciBzZW5hdGUgZGlzY2xvc3VyZSByc3MgZmVlZAojIHRoaXMgb25lIGlzIG5vdCBhdmFpbGFibGUgdW5kZXIgdGhlIGZyZWUgc3Vic2NyaXB0aW9uIHBsYW5kCiNyZXMgPC0gaHR0cjo6R0VUKHVybCA9IHNwcmludGYoJ2h0dHBzOi8vZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS9hcGkvdjQvc2VuYXRlLWRpc2Nsb3N1cmUtcnNzLWZlZWQ/cGFnZT0wJmFwaWtleT0lcycsIGZtcF9hcGlfa2V5KSwgaHR0cjo6YWRkX2hlYWRlcnMoLmhlYWRlcnM9aGVhZGVycyksIHF1ZXJ5ID0gcGFyYW1zKQoKIyB1cmwgZm9yIHNlbmF0ZSB0cmFkaW5nIGFwaSBieSBzdG9jawojIHRoaXMgb25lIGlzIG5vdCBhdmFpbGFibGUgdW5kZXIgdGhlIGZyZWUgc3Vic2NyaXB0aW9uIHBsYW5kCnJlcyA8LSBodHRyOjpHRVQodXJsID0gc3ByaW50ZignaHR0cHM6Ly9maW5hbmNpYWxtb2RlbGluZ3ByZXAuY29tL2FwaS92NC9zZW5hdGUtdHJhZGluZz9zeW1ib2w9QUFQTCZhcGlrZXk9JXMnLCBmbXBfYXBpX2tleSksIGh0dHI6OmFkZF9oZWFkZXJzKC5oZWFkZXJzPWhlYWRlcnMpLCBxdWVyeSA9IHBhcmFtcykKCnByaW50KHJlcykKYGBgCiMjIyBUZXN0IEZpbm5odWIKCmBgYHtyfQoKYGBgCgojIyMgVGVzdCBCZW56aW5nYQoKYGBge3J9CgpgYGAKCiMjIyBUZXN0IEhvdXNlIFN0b2NrIFdhdGNoZXIKCmBgYHtyfQoKYGBgCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiQVBJIFRlc3RpbmciCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCiMjIEludHJvZHVjdGlvbgoKVGhpcyBub3RlYm9vayBpcyB0ZXN0aW5nIHdoZXRoZXIgb3Igbm90IHdlIGNhbiBwdWxsIGNvbmdyZXNzaW9uYWwgdHJhZGUgZGF0YSBmcm9tIGFuIEFQSSBmb3IgZnJlZS4gV2UnbGwgdGVzdCB0aGUgZm9sbG93aW5nIHdlYnNpdGVzOgoKLSBbRk1QXShodHRwczovL3NpdGUuZmluYW5jaWFsbW9kZWxpbmdwcmVwLmNvbS8pCiAgLSBbRG9jdW1lbnRhaW9uIEhlcmVdKGh0dHBzOi8vc2l0ZS5maW5hbmNpYWxtb2RlbGluZ3ByZXAuY29tL2RldmVsb3Blci9kb2NzI3NlbmF0ZSkKLSBbRmlubmh1Yl0oaHR0cHM6Ly9maW5uaHViLmlvLykKICAtIFtEb2N1bWVudGFpb24gSGVyZV0oaHR0cHM6Ly9maW5uaHViLmlvL2RvY3MvYXBpL2NvbmdyZXNzaW9uYWwtdHJhZGluZykKLSBbQmVuemluZ2EgQVBJc10oaHR0cHM6Ly93d3cuYmVuemluZ2EuY29tL2FwaXMvKQogIC0gW0RvY3VtZW50YWlvbiBIZXJlXShodHRwczovL3d3dy5iZW56aW5nYS5jb20vYXBpcy9jbG91ZC1wcm9kdWN0L2dvdmVybm1lbnQtdHJhZGVzLykKLSBbSG91c2UgU3RvY2sgV2F0Y2hlcl0oaHR0cHM6Ly9ob3VzZXN0b2Nrd2F0Y2hlci5jb20vKQogIC0gW0RvY3VtZW50YWlvbiBIZXJlXShodHRwczovL2hvdXNlc3RvY2t3YXRjaGVyLmNvbS9hcGkpCgpgYGB7ciBMaWJyYXJpZXMgKyBBUEkgS2V5c30KIyBsb2FkIGxpYnJhcmllcwpsaWJyYXJ5KGh0dHIpCmxpYnJhcnkoZG90ZW52KQpsaWJyYXJ5KGpzb25saXRlKQoKIyBsb2FkIC5lbnYgZmlsZQpsb2FkX2RvdF9lbnYoIi4uLy5lbnYiKQoKIyByZWFkIGluIEFQSSBLZXlzCmZtcF9hcGlfa2V5IDwtIFN5cy5nZXRlbnYoIkZNUF9BUElfS0VZIikKZmlubmh1Yl9hcGlfa2V5IDwtIFN5cy5nZXRlbnYoIkZJTk5IVUJfQVBJX0tFWSIpCmJlbnppbmdhX2FwaV9rZXkgPC0gU3lzLmdldGVudigiQkVOWklOR0FfQVBJX0tFWSIpCmBgYAoKIyMjIFRlc3QgRk1QCgpgYGB7cn0KaGVhZGVycyA9IGMoYFVwZ3JhZGUtSW5zZWN1cmUtUmVxdWVzdHNgID0gJzEnKQpwYXJhbXMgPSBsaXN0KGBkYXRhdHlwZWAgPSAnanNvbicpCgojIHVybCBmb3Igc2VuYXRlIHRyYWRpbmcgYXBpIGJ5IHN0b2NrCnRyYWRlc191cmwgPC0gc3ByaW50ZignaHR0cHM6Ly9maW5hbmNpYWxtb2RlbGluZ3ByZXAuY29tL2FwaS92NC9zZW5hdGUtdHJhZGluZz9zeW1ib2w9QUFQTCZhcGlrZXk9JXMnLCBmbXBfYXBpX2tleSkKIyB1cmwgZm9yIHNlbmF0ZSBkaXNjbG9zdXJlIHJzcyBmZWVkCnJzc191cmwgPC0gc3ByaW50ZignaHR0cHM6Ly9maW5hbmNpYWxtb2RlbGluZ3ByZXAuY29tL2FwaS92NC9zZW5hdGUtZGlzY2xvc3VyZS1yc3MtZmVlZD9wYWdlPTAmYXBpa2V5PSVzJywgZm1wX2FwaV9rZXkpCgojIHRoaXMgb25lIGlzIG5vdCBhdmFpbGFibGUgdW5kZXIgdGhlIGZyZWUgc3Vic2NyaXB0aW9uIHBsYW5kCiMgcmVzcG9uc2UgPC0gR0VUKHRyYWRlc191cmwgLCBhZGRfaGVhZGVycyguaGVhZGVycz1oZWFkZXJzKSwgcXVlcnkgPSBwYXJhbXMpCgojIHRoaXMgb25lIGlzIG5vdCBhdmFpbGFibGUgdW5kZXIgdGhlIGZyZWUgc3Vic2NyaXB0aW9uIHBsYW4KcmVzcG9uc2UgPC0gR0VUKHJzc191cmwgLCBhZGRfaGVhZGVycyguaGVhZGVycz1oZWFkZXJzKSwgcXVlcnk9cGFyYW1zKQoKcHJpbnQocmVzcG9uc2UpCmBgYAojIyMgVGVzdCBGaW5uaHViCgpgYGB7cn0KdXJsIDwtIHNwcmludGYoJ2h0dHBzOi8vZmlubmh1Yi5pby9hcGkvdjEvc3RvY2svY29uZ3Jlc3Npb25hbC10cmFkaW5nP3N5bWJvbD1BQVBMJnRva2VuPSVzJywgZmlubmh1Yl9hcGlfa2V5KQoKcmVzcG9uc2UgPC0gR0VUKHVybCkKCiMgcmV0dXJuaW5nIDQwMSB1bmF1dGhvcml6ZWQgZXJyb3Igc28gcHJvYmFibHkgY2FuJ3QgdXNlIHRoaXMgb25lIGVpdGhlcgpwcmludChyZXNwb25zZSkKYGBgCgojIyMgVGVzdCBCZW56aW5nYQoKYGBge3J9CnVybCA8LSAiaHR0cHM6Ly9hcGkuYmVuemluZ2EuY29tL2FwaS92MS9nb3YvdXNhL2NvbmdyZXNzL3RyYWRlcyIKcGFyYW1zIDwtIGxpc3QodG9rZW49YmVuemluZ2FfYXBpX2tleSkKCnJlc3BvbnNlIDwtIEdFVCh1cmwsIHF1ZXJ5PXF1ZXJ5X3BhcmFtcykKCiMgcmV0dXJuaW5nIDQwMSB1bmF1dGhvcml6ZWQgZXJyb3Igc28gcHJvYmFibHkgY2FuJ3QgdXNlIHRoaXMgb25lIGVpdGhlcgpwcmludChyZXNwb25zZSkKYGBgCkV2ZW4gdGhvdWdoIEkgY2FuJ3Qgc2VlbSB0byBwdWxsIHRoZSBkYXRhIHZpYSBBUEkgSSBjYW4gZ2V0IGEgcmVzcG9uc2UgZnJvbSBbaGVyZV0oaHR0cHM6Ly9kb2NzLmJlbnppbmdhLmNvbS9iZW56aW5nYS1hcGlzL2dvdmVybm1lbnQtdHJhZGVzL2dldC10cmFkZXMpIGluIHRoZSBicm93c2VyIHVzaW5nIHRoZSBBUEkgdG9rZW4uIENhbiBhbHdheXMgdXNlIHRoZSBicm93c2VyIHRvIG1hbnVhbGx5IHB1bGwgZGF0YSBpZiBuZWVkZWQuCgojIyMgVGVzdCBIb3VzZSBTdG9jayBXYXRjaGVyCgpgYGB7cn0KdXJsIDwtICJodHRwczovL2hvdXNlLXN0b2NrLXdhdGNoZXItZGF0YS5zMy11cy13ZXN0LTIuYW1hem9uYXdzLmNvbS9kYXRhL2FsbF90cmFuc2FjdGlvbnMuanNvbiIKICAKcmVzcG9uc2UgPC0gR0VUKHVybCkKCmRhdGEgPC0gZnJvbUpTT04oY29udGVudChyZXNwb25zZSwgYXMgPSAidGV4dCIsIGVuY29kaW5nID0gIlVURi04IikpCgpoZWFkKGRhdGEpCmBgYApUaGlzIG9uZSBzZWVtcyB0byB3b3JrIGFuZCBhbHNvIGhhcyBhbiBvcHRpb24gdG8gZG8gYSBtYW51YWwgZG93bmxvYWQgdmlhIHRoZSBicm93c2VyLiA=</div>
 
 
 
