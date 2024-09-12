@@ -1,0 +1,45 @@
+---
+title: "API Testing"
+output: html_notebook
+---
+
+## Introduction
+
+This notebook is testing whether or not we can pull congressional trade data from an API for free. We'll test the following websites:
+
+- [FMP](https://site.financialmodelingprep.com/)
+  - [Documentaion Here](https://site.financialmodelingprep.com/developer/docs#senate)
+- [Finnhub](https://finnhub.io/)
+  - [Documentaion Here](https://finnhub.io/docs/api/congressional-trading)
+- [Benzinga APIs](https://www.benzinga.com/apis/)
+  - [Documentaion Here](https://www.benzinga.com/apis/cloud-product/government-trades/)
+- [House Stock Watcher](https://housestockwatcher.com/)
+  - [Documentaion Here](https://housestockwatcher.com/api)
+
+```{r Libraries + API Keys}
+# load libraries
+library(httr)
+library(dotenv)
+
+# load .env file
+load_dot_env()
+
+# read in API Keys
+fmp_api_key <- Sys.getenv("FMP_API_KEY")
+```
+
+## Test FMP
+
+```{r}
+headers = c(`Upgrade-Insecure-Requests` = '1')
+params = list(`datatype` = 'json')
+
+# url for senate disclosure rss feed
+# this one is not available under the free subscription pland
+#res <- httr::GET(url = sprintf('https://financialmodelingprep.com/api/v4/senate-disclosure-rss-feed?page=0&apikey=%s', fmp_api_key), httr::add_headers(.headers=headers), query = params)
+
+
+
+print(res)
+```
+
