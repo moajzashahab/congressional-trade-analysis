@@ -22,10 +22,13 @@ library(httr)
 library(dotenv)
 
 # load .env file
-load_dot_env()
+load_dot_env("../.env")
 
 # read in API Keys
 fmp_api_key <- Sys.getenv("FMP_API_KEY")
+finnhub_api_key <- Sys.getenv("FINNHUB_API_KEY")
+benzinga_api_key <- Sys.getenv("BENZINGA_API_KEY")
+hsw_api_key <- Sys.getenv("HSW_API_KEY")
 ```
 
 ### Test FMP
