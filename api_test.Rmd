@@ -28,7 +28,7 @@ load_dot_env()
 fmp_api_key <- Sys.getenv("FMP_API_KEY")
 ```
 
-## Test FMP
+### Test FMP
 
 ```{r}
 headers = c(`Upgrade-Insecure-Requests` = '1')
@@ -38,8 +38,26 @@ params = list(`datatype` = 'json')
 # this one is not available under the free subscription pland
 #res <- httr::GET(url = sprintf('https://financialmodelingprep.com/api/v4/senate-disclosure-rss-feed?page=0&apikey=%s', fmp_api_key), httr::add_headers(.headers=headers), query = params)
 
-
+# url for senate trading api by stock
+# this one is not available under the free subscription pland
+res <- httr::GET(url = sprintf('https://financialmodelingprep.com/api/v4/senate-trading?symbol=AAPL&apikey=%s', fmp_api_key), httr::add_headers(.headers=headers), query = params)
 
 print(res)
 ```
+### Test Finnhub
 
+```{r}
+
+```
+
+### Test Benzinga
+
+```{r}
+
+```
+
+### Test House Stock Watcher
+
+```{r}
+
+```
