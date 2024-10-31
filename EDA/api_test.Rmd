@@ -7,23 +7,23 @@ output: html_notebook
 
 This notebook is testing whether or not we can pull congressional trade data from an API for free. We'll test the following websites:
 
-- [FMP](https://site.financialmodelingprep.com/)
-  - [Documentaion Here](https://site.financialmodelingprep.com/developer/docs#senate)
-- [Finnhub](https://finnhub.io/)
-  - [Documentaion Here](https://finnhub.io/docs/api/congressional-trading)
-- [Benzinga APIs](https://www.benzinga.com/apis/)
-  - [Documentaion Here](https://www.benzinga.com/apis/cloud-product/government-trades/)
-- [House Stock Watcher](https://housestockwatcher.com/)
-  - [Documentaion Here](https://housestockwatcher.com/api)
+-   [FMP](https://site.financialmodelingprep.com/)
+    -   [Documentaion Here](https://site.financialmodelingprep.com/developer/docs#senate)
+-   [Finnhub](https://finnhub.io/)
+    -   [Documentaion Here](https://finnhub.io/docs/api/congressional-trading)
+-   [Benzinga APIs](https://www.benzinga.com/apis/)
+    -   [Documentaion Here](https://www.benzinga.com/apis/cloud-product/government-trades/)
+-   [House Stock Watcher](https://housestockwatcher.com/)
+    -   [Documentaion Here](https://housestockwatcher.com/api)
 
-```{r Libraries + API Keys}
+```{r Libraries_+_API_Keys}
 # load libraries
 library(httr)
 library(dotenv)
 library(jsonlite)
 
 # load .env file
-load_dot_env("../.env")
+#load_dot_env("env.env")
 
 # read in API Keys
 fmp_api_key <- Sys.getenv("FMP_API_KEY")
@@ -50,6 +50,7 @@ response <- GET(rss_url , add_headers(.headers=headers), query=params)
 
 print(response)
 ```
+
 ### Test Finnhub
 
 ```{r}
@@ -72,6 +73,7 @@ response <- GET(url, query=query_params)
 # returning 401 unauthorized error so probably can't use this one either
 print(response)
 ```
+
 Even though I can't seem to pull the data via API I can get a response from [here](https://docs.benzinga.com/benzinga-apis/government-trades/get-trades) in the browser using the API token. Can always use the browser to manually pull data if needed.
 
 ### Test House Stock Watcher
@@ -85,4 +87,9 @@ data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
 
 head(data)
 ```
-This one seems to work and also has an option to do a manual download via the browser. 
+
+This one seems to work and also has an option to do a manual download via the browser.
+
+```{r test_data}
+summary(data)
+```

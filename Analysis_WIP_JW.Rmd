@@ -1,0 +1,189 @@
+---
+title: "Trade Analysis"
+author: "Jerrin Wiley"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Packages
+
+```{r libraries}
+# load libraries
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(tidyr)
+library(tidyquant)
+library(naniar)
+library(purrr)
+library(progress)
+```
+
+## Pre-Processing
+
+### Load Financials
+
+```{r load_financials}
+url <- "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json"
+  
+response <- GET(url)
+
+data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
+
+head(data)
+```
+
+### Handle missing values
+
+Create working file with relevant information
+
+```{r preprocessing_createDf}
+data_working <- subset(data,select=c('transaction_date','ticker','type','amount','cap_gains_over_200_usd','industry','sector'))
+```
+
+Check for NA's
+
+```{r preprocessing_visualizeNAs}
+
+# Visualize missing data
+vis_miss(data_working)
+```
+
+```{r preprocessing_rangeChecker}
+
+# Check all ranges listed
+#unique(data_working$amount)
+
+# Repair ranges with missing high ends
+
+# Use mutate and sub to replace values starting with "$1,001 -"
+data_working <- data_working %>%
+  mutate(amount = sub("^\\$1,001 -.*", "$1,001 - $15,000", amount))
+
+# Use mutate and sub to replace values starting with "$1,000,000 -"
+data_working <- data_working %>%
+  mutate(amount = sub("^\\$1,000,000 + .*", "$1,000,000 - $5,000,000", amount))
+
+# TODO: Need to check top range in disclosures. Eliminating range is a short-term solution
+
+# Use mutate and sub to replace values starting with "$50,000,000 -"
+data_working <- data_working %>%
+  mutate(amount = sub("^\\$50,000,000 +.*", "$50,000,000 - $50,000,000", amount))
+
+unique(data_working$amount)
+```
+
+```{r preprocessing3}
+
+# Convert amount ranges into min, mid, and high values
+data_working <- data_working %>%
+  # Step 1: Remove $ and commas, then separate the low and high parts
+  mutate(clean_amount = gsub("[$,]", "", amount)) %>%
+  separate(clean_amount, into = c("low", "high"), sep = " - ") %>%
+  # Step 2: Convert low and high to integers
+  mutate(low = as.numeric(low),
+         high = as.numeric(high)) %>%
+  # Step 3: Calculate the middle of the range
+  mutate(middle = (low + high) / 2)
+
+# Conver dates
+data_working$transaction_date <- as.Date(data_working$transaction_date)
+
+# View the modified data frame
+data_working
+```
+
+Next we need to find the stock value at time of purchase to determine number of shares.
+
+```{r purchase_price}
+
+# Define a function to calculate the number of shares purchased
+calculate_shares <- function(ticker, purchase_date, amount_spent) {
+  
+  # Check if ticker or purchase_date is NA
+  if (is.na(ticker) || is.na(purchase_date)) {
+    warning(paste("Ticker or purchase date is missing for ticker:", ticker))
+    return(NA)
+  }
+  
+  # Ensure purchase_date is in Date format
+  purchase_date <- as.Date(purchase_date)
+  
+  # Set "to" date to the day after the purchase_date
+  to_date <- purchase_date + 1
+  
+  # Try to fetch stock data, with error handling
+  stock_data <- tryCatch({
+    tq_get(ticker, from = purchase_date, to = to_date)
+  }, error = function(e) {
+    warning(paste("Error fetching data for", ticker, ":", e$message))
+    return(NULL)  # Return NULL if there's an error
+  })
+  
+  # If stock_data is NULL, return NA
+  if (is.null(stock_data)) {
+    warning(paste("Stock data is NULL for", ticker))
+    return(NA)
+  }
+  
+  # Ensure stock_data has rows
+  if (nrow(stock_data) == 0) {
+    warning(paste("No data found for", ticker, "around", purchase_date))
+    return(NA)
+  }
+
+  # Check for missing adjusted price
+  if (is.na(stock_data$adjusted[1])) {
+    warning(paste("Adjusted price is missing for", ticker, "on", purchase_date))
+    return(NA)
+  }
+  
+  # Extract the closing price (adjusted for splits/dividends if necessary)
+  closing_price <- stock_data$adjusted[1]  # Get the price for the first available date
+  
+  # Calculate the number of shares
+  num_shares <- amount_spent / closing_price
+  
+  return(num_shares)
+}
+```
+
+```{r}
+# Initialize the progress bar
+pb <- progress_bar$new(
+  format = "  Processing [:bar] :percent eta: :eta",
+  total = nrow(data_working), clear = FALSE, width = 60
+)
+
+# Define a modified version of the function with a progress bar
+calculate_shares_with_progress <- function(ticker, transaction_date, amount_spent) {
+  pb$tick()  # Update the progress bar for each row
+  tryCatch({
+    # Attempt to calculate the number of shares
+    calculate_shares(ticker, transaction_date, amount_spent)
+  }, error = function(e) {
+    # If an error occurs, display a warning and return NA
+    warning(paste("Error calculating shares for", ticker, "on", transaction_date, ":", e$message))
+    return(NA)
+  })
+}
+
+# Use pmap to apply the function to each row with the progress bar
+data_working <- data_working %>%
+  mutate(num_shares = pmap_dbl(
+    list(ticker, transaction_date, middle),
+    calculate_shares_with_progress
+  ))
+```
+
+```{r}
+data_working_current <- data_working
+```
+
+```{r}
+data_working_current
+```
