@@ -25,6 +25,7 @@ library(here)
 library(openxlsx)
 library(bizdays)
 library(timeDate)
+library(ggplot2)
 ```
 
 ## Pre-Processing
@@ -92,6 +93,8 @@ disclosure_data <- disclosure_data %>%
   filter(format(transaction_date, "%Y") %in% years)
 cat("Remaining n: ", nrow(disclosure_data))
 ```
+
+### Calculate Price Change
 
 Next we need to find the stock value at time of purchase.
 
@@ -255,4 +258,41 @@ prevalence_by_type <- disclosure_data %>%
 
 # Display the result
 prevalence_by_type
+```
+
+```{r remove_exchanges}
+nbefore <- nrow(disclosure_data)
+disclosure_data <- disclosure_data %>%
+  filter(!(type == 'exchange'))
+nafter <- nrow(disclosure_data)
+nremoved <- nbefore - nafter
+cat("n before: ", nbefore, "\nn after: ", nafter,"\n----------------\nn removed: ", nremoved)
+```
+
+```{r price_change_histograms}
+# Create the histogram with faceting by 'type'
+ggplot(disclosure_data, aes(x = price_change)) +
+  geom_histogram(binwidth = 100, fill = "skyblue", color = "black") +
+  facet_wrap(~ type) +
+  labs(title = "Histogram of Price Change by Type", x = "Price Change", y = "Count") +
+  theme_minimal()
+```
+
+### Check trader accuracy
+
+Trader accuracy is defined as a purchasing a stock and then the price increased, as well as selling before the price decreases
+
+```{r trade_prediction}
+disclosure_data <- disclosure_data %>%
+  mutate(prediction = if_else(type == "purchase", "increase", "decrease"))
+```
+
+```{r trade_actual}
+disclosure_data <- disclosure_data %>%
+  mutate(actual = if_else(price_change >= 0, "increase", "decrease"))
+```
+
+```{r trade_accuracy}
+disclosure_data <- disclosure_data %>%
+  mutate(trade_accuracy = if_else(prediction == actual, 1, 0))
 ```
