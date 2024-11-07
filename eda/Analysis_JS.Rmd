@@ -1,0 +1,76 @@
+---
+title: "Analysis_JS"
+output: pdf_document
+date: "2024-11-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(dplyr)
+require(caret)
+require(glmnet)
+```
+
+
+```{r}
+disclosure <- read.csv('..//data//disclosure_data.csv')
+congress <- read.csv('..//data//Congressional_Makeup_117.csv')
+```
+
+```{r}
+number_of_trades = rep(0, 430)
+for (i in 1:430) {
+  number_of_trades[i] = sum(congress$fullname[i] == disclosure$representative)
+}
+```
+
+```{r}
+congress <- cbind(congress, number_of_trades)
+```
+
+```{r}
+congress %>% 
+  filter(party == 'Republican') %>%
+  select(number_of_trades) %>%
+  sum()
+
+congress %>% 
+  filter(party == 'Democratic') %>%
+  select(number_of_trades) %>%
+  sum()
+```
+
+```{r}
+congress[,c(3,32)] %>% 
+  sort_by(number_of_trades, decreasing=TRUE) %>%
+  head()
+```
+
+
+```{r}
+congress$party <- ifelse(congress$party == 'Democratic', 1, 0)
+```
+
+```{r}
+congress %>%
+  filter(number_of_trades>0) %>%
+  select(4,6, 12:31) %>%
+  as.matrix() ->
+  X
+
+congress %>%
+  filter(number_of_trades>0) %>%
+  select(32) %>%
+  as.matrix() ->
+  Y
+```
+
+```{r}
+lassoOut = cv.glmnet(X ,Y, alpha=1, standardize = FALSE) #Consider why we wouldn't standardize
+betaHatLasso = coef(lassoOut,s='lambda.min')
+Slasso = which(abs(betaHatLasso) > 1e-16)
+```
+
