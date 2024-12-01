@@ -12,6 +12,12 @@ library(plotly)
 library(skimr)
 library(ggplot2)
 library(gridExtra)
+library(tidyr)
+library(GGally)
+library(ggcorrplot)
+library(fastDummies)
+library(caret)          
+library(glmnet)         
 ```
 
 # Read in and inspect data
@@ -194,6 +200,7 @@ ggplot(committee_success_rates, aes(x = success_rate, y = reorder(committee, suc
                                       axis.title = element_text(size = 12))
 ```
 
+### More visualization + analysis
 ```{r, message=FALSE, warning=FALSE}
 max_trades = max(committee_success_rates$total_trades, na.rm = TRUE)
                  committee_success_rates = committee_success_rates %>%
@@ -257,6 +264,313 @@ ggplot(sector_success_rates, aes(x = success_rate, y = reorder(sector, success_r
                                                      axis.text = element_text(size = 10),
                                                      axis.title = element_text(size = 12),
                                                      plot.margin = margin(t = 20, r = 20, b = 20, l = 20))
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(df, aes(x = seniority_years, y = trade_success)) +
+           geom_jitter(width = 0.2, height = 0.05, color = "blue", alpha = 0.6) +
+           labs(title = "Success vs. Seniority Years",
+                x = "Seniority (Years)", y = "Success (1 = Successful Trade)") +
+           theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 14),
+                                   axis.text = element_text(size = 10),
+                                   axis.title = element_text(size = 12))
+
+ggplot(df, aes(x = factor(trade_success), y = seniority_years)) +
+           geom_boxplot(fill = "skyblue", color = "black", width = 0.5) +
+           labs(title = "Seniority Years by Success",
+                x = "Success (0 = Unsuccessful, 1 = Successful)",
+                y = "Seniority (Years)") +
+           theme_minimal() +
+           theme(plot.title = element_text(hjust = 0.5, size = 14),
+                 axis.text = element_text(size = 10),
+                 axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+party_success = df %>%
+                 group_by(party) %>%
+                 summarise(average_success_rate = mean(trade_success, na.rm = TRUE),
+                           .groups = "drop")
+
+ggplot(party_success, aes(x = party, y = average_success_rate)) +
+                      geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+                      labs(title = "Success Rate by Party", x = "Party", y = "Average Success Rate") +
+                      theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 14),
+                                              axis.text = element_text(size = 10),
+                                              axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+pairplot_vars = c("trade_price", "price_change_pct", "seniority_years", "excess_return", "trade_success")
+
+pairplot_data = df %>%
+                select(all_of(pairplot_vars)) %>%
+                mutate(trade_success = as.factor(trade_success))  
+
+ggpairs(pairplot_data, aes(color = trade_success, alpha = 0.6),
+                       lower = list(continuous = wrap("points", alpha = 0.4)),
+                       upper = list(continuous = wrap("cor", size = 4)),       
+                       diag = list(continuous = wrap("densityDiag", alpha = 0.4))) +
+                       theme_minimal() + theme(legend.position = "bottom",  
+                                               plot.title = element_text(hjust = 0.5, size = 14)) +
+                       labs(title = "Pair Plot of Selected Variables by Trade Success")
+```
+
+```{r, message=FALSE, warning=FALSE}
+df = df %>%
+     mutate(party_encoded = as.numeric(as.factor(party)),  
+            gender_encoded = as.numeric(as.factor(gender)))
+
+corr_vars = c("trade_price", "price_change_pct", "seniority_years", 
+              "excess_return", "trade_success", "party_encoded", "gender_encoded")
+
+subset_df = df %>% select(all_of(corr_vars))
+corr_matrix = cor(subset_df, use = "complete.obs")
+
+ggcorrplot(corr_matrix,
+           method = "square",           
+           type = "full",              
+           lab = TRUE,                
+           lab_size = 4,                
+           colors = c("red", "white", "blue"),  
+           title = "Correlation Matrix Including Encoded Categorical Variables",
+           legend.title = "Correlation") + theme_minimal() +
+           theme(plot.title = element_text(hjust = 0.5, size = 16),  
+                 legend.position = "right",                         
+                 axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, fig.width=10, fig.height=10, message=FALSE, warning=FALSE}
+committee_columns = grep("committee_", names(df), value = TRUE)
+committee_df = df %>% select(all_of(committee_columns))
+
+committee_corr = cor(committee_df, use = "complete.obs")
+
+colnames(committee_corr) = abbreviate(colnames(committee_corr), minlength = 15)
+rownames(committee_corr) = abbreviate(rownames(committee_corr), minlength = 15)
+
+ggcorrplot(committee_corr,
+           method = "square",          
+           type = "full",               
+           lab = FALSE,                
+           colors = c("red", "white", "blue"),  
+           title = "Correlation Matrix of Committee Memberships",
+           legend.title = "Correlation") +
+           theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),  
+                                   legend.position = "right",                     
+                                   axis.text.x = element_text(size = 8, angle = 90, hjust = 1), 
+                                   axis.text.y = element_text(size = 8))
+```
+
+```{r, message=FALSE, warning=FALSE}
+df = df %>%
+     mutate(num_committees = rowSums(select(., starts_with("committee_")), na.rm = TRUE))
+
+success_by_committees <- df %>%
+                         group_by(num_committees) %>%
+                         summarise(average_success_rate = mean(trade_success, na.rm = TRUE),
+                                   .groups = "drop")
+
+ggplot(success_by_committees, aes(x = num_committees, y = average_success_rate)) +
+                              geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+                              labs(title = "Success Rate by Number of Committee Memberships",
+                                   x = "Number of Committees", y = "Average Success Rate") +
+       theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
+                               axis.text = element_text(size = 10),
+                               axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+df = df %>%
+     mutate(trade_date = as.Date(trade_date))  
+
+df = df %>%
+     mutate(trade_year = format(trade_date, "%Y"))  
+
+trades_per_year = df %>%
+                  group_by(trade_year) %>%
+                  summarise(num_trades = n(), .groups = "drop")
+
+ggplot(trades_per_year, aes(x = as.numeric(trade_year), y = num_trades)) +
+                        geom_line(group = 1, color = "blue", size = 1) +
+                        geom_point(color = "red", size = 2) +
+                        labs(title = "Number of Trades Over Time",
+                             x = "Year", y = "Number of Trades") +
+       theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
+                               axis.text = element_text(size = 10),
+                               axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+df = df %>%
+     mutate(trade_date = as.Date(trade_date),        
+            trade_year = format(trade_date, "%Y")) 
+
+success_per_year = df %>%
+                   group_by(trade_year) %>%
+                   summarise(avg_success_rate = mean(trade_success, na.rm = TRUE), 
+                             .groups = "drop")
+
+ggplot(success_per_year, aes(x = as.numeric(trade_year), y = avg_success_rate)) +
+                         geom_line(group = 1, color = "blue", size = 1) +
+                         geom_point(color = "red", size = 2) +
+                         labs(title = "Success Rate Over Time",
+                              x = "Year", y = "Average Success Rate") +
+       theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
+                               axis.text = element_text(size = 10),
+                               axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+sector_success = df %>%
+                 group_by(sector) %>%
+                 summarise(avg_success_rate = mean(trade_success, na.rm = TRUE), 
+                           .groups = "drop")
+
+ggplot(sector_success, aes(x = avg_success_rate, y = reorder(sector, avg_success_rate))) +
+                       geom_bar(stat = "identity", fill = "darkorange", color = "black") +
+                       labs(title = "Success Rate by Sector", x = "Average Success Rate", y = "Sector") +
+       theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),  
+                               axis.text = element_text(size = 10),               
+                               axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+sector_counts = df %>%
+                group_by(sector) %>%
+                summarise(num_trades = n(), .groups = "drop")
+
+ggplot(sector_counts, aes(x = num_trades, y = reorder(sector, num_trades))) +
+                      geom_bar(stat = "identity", fill = "purple", color = "black") +
+                      labs(title = "Number of Trades by Sector", x = "Number of Trades", y = "Sector") +
+       theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
+                               axis.text = element_text(size = 10),               
+                               axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+rank_success = df %>%
+               group_by(is_chair_or_vice) %>%
+               summarise(avg_success_rate = mean(trade_success, na.rm = TRUE),  .groups = "drop") %>%
+               mutate(Rank = ifelse(is_chair_or_vice == 1, "Chair/Vice Chair", "Member"))  # Map ranks
+
+ggplot(rank_success, aes(x = Rank, y = avg_success_rate)) +
+                     geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+                     labs(title = "Success Rate by Rank", x = "Rank", y = "Average Success Rate") +
+       theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
+                               axis.text = element_text(size = 8),       
+                               axis.title = element_text(size = 8))
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+for (var in numerical_vars) {plot = ggplot(df, aes(x = as.factor(trade_success), y = .data[[var]])) +
+                                               geom_boxplot(fill = "skyblue", color = "black") +
+                                               labs(title = paste(var, "by Success"),
+                                                    x = "Success (0 = Unsuccessful, 1 = Successful)",
+                                                    y = var) + theme_minimal() + 
+                                               theme(plot.title = element_text(hjust = 0.5, size = 16),
+                                                     axis.text = element_text(size = 10),
+                                                     axis.title = element_text(size = 12))
+                             print(plot)}
+```
+
+# Modeling
+```{r, message=FALSE, warning=FALSE}
+set.seed(123)
+
+categorical_vars = c('party', 'state', 'gender', 'sector', 'industry')
+numerical_vars = c("seniority_years", "trade_price")
+columns_to_drop = c('trade_id', 'trade_success', 'trade_date', 'bioguideID', 'transaction_type',
+                     'price_365_days_after_trade', 'price_change_pct', 'congress_num', 'market_return',
+                     'term_start', 'excess_return', 'market_success')
+lr_df = dummy_cols(df,
+                select_columns = categorical_vars,
+                remove_first_dummy = TRUE, 
+                remove_selected_columns = TRUE)
+
+X = lr_df %>% select(-all_of(columns_to_drop))
+y = lr_df %>% pull(trade_success)
+
+X = X %>% mutate(across(all_of(numerical_vars), scale))
+
+dataset = cbind(X, trade_success = y)
+train_index = createDataPartition(dataset$trade_success, p = 0.8, list = FALSE)
+
+train_data = dataset[train_index, ]
+test_data = dataset[-train_index, ]
+
+X_train = as.matrix(train_data[, setdiff(names(train_data), "trade_success")])
+y_train = train_data$trade_success
+
+X_test = as.matrix(test_data[, setdiff(names(test_data), "trade_success")])
+y_test = test_data$trade_success
+```
+
+```{r, message=FALSE, warning=FALSE}
+model = cv.glmnet(X_train, y_train,
+                  family = "binomial", 
+                  alpha = 1,          
+                  lambda = NULL,       
+                  standardize = TRUE,
+                  type.measure = "class",
+                  nfolds = 10)
+
+best_lambda = model$lambda.min
+print(paste("Best Lambda:", best_lambda))
+```
+
+```{r, message=FALSE, warning=FALSE}
+predictions = predict(model, X_test, s = best_lambda, type = "response")
+predicted_classes = ifelse(predictions > 0.5, 1, 0)
+
+confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(y_test))
+print(confusion_matrix)
+```
+
+```{r, message=FALSE, warning=FALSE}
+coefficients = coef(model, s = best_lambda) 
+coefficients = as.matrix(coefficients)
+
+coefficients = setNames(coefficients[, 1], rownames(coefficients))
+significant_coefficients = coefficients[coefficients != 0]
+
+significant_coefficients = significant_coefficients[order(abs(significant_coefficients), decreasing = TRUE)]
+
+cat("Significant Predictors:\n")
+print(significant_coefficients)
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
 ```
 
 ```{r, message=FALSE, warning=FALSE}
