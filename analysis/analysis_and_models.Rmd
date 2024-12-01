@@ -1,0 +1,284 @@
+---
+title: "Congressional Trades Analysis and Models"
+author: "Moajza Shahab, Jerrin Wiley, Jake Sheridan"
+output: html_document
+---
+# Load Packages
+```{r load-libraries, message=FALSE, warning=FALSE}
+library(DT)
+library(dplyr)
+library(readxl)
+library(plotly)
+library(skimr)
+library(ggplot2)
+library(gridExtra)
+```
+
+# Read in and inspect data
+```{r load-data, message=FALSE, warning=FALSE}
+file_path = "../data/master_df.xlsx"
+df = read_excel(file_path)
+```
+
+```{r, message=FALSE, warning=FALSE}
+datatable(head(df, 10),
+          options = list(scrollX = TRUE,     
+                         pageLength = 5,            
+                         autoWidth = TRUE,
+                         searching = FALSE),
+          caption = "Preview of Trade and Congressional Data")
+```
+
+### Get summary statistics
+```{r, message=FALSE, warning=FALSE}
+skim_df =  skim(df) %>%
+            rename(variable_type = skim_type,
+                   variable_name = skim_variable,
+                   missing_values = n_missing,
+                   min_value = POSIXct.min,
+                   max_value = POSIXct.max,
+                   median_value = POSIXct.median,
+                   unique_values = POSIXct.n_unique,
+                   )
+
+
+datatable(skim_df, options = list(scrollX = TRUE,                
+                                  pageLength = 10,        
+                                  autoWidth = TRUE,             
+                                  searching = FALSE),
+          caption = "Summary Statistics for Data")
+```
+
+### Visualizations for numeric values
+```{r, message=FALSE, warning=FALSE}
+numerical_vars = c("trade_price", "price_change_pct", "seniority_years", "excess_return")
+
+create_histogram = function(var) {ggplot(df, aes(x = .data[[var]])) + 
+                      geom_histogram(aes(y = ..density..), bins = 30, fill = "blue", color = "black", alpha = 0.7) +
+                      geom_density(color = "red", size = 1) +
+                      labs(title = paste("Distribution of", var), x = var, y = "Density") +
+                      theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 14),
+                                              axis.text = element_text(size = 10),    
+                                              axis.title = element_text(size = 12))}
+
+histogram_plots = lapply(numerical_vars, create_histogram)
+grid.arrange(grobs = histogram_plots, ncol = 2)
+```
+
+### Visualizations for categorical values
+```{r, message=FALSE, warning=FALSE}
+create_interactive_barplot = function(var) {
+                                plot_ly(data = df, y = ~reorder(.data[[var]], table(.data[[var]])[.data[[var]]]),
+                                type = "bar", orientation = "h", marker = list(color = "steelblue")) %>%
+                                layout(title = paste("Distribution of", var), xaxis = list(title = "Count"),
+                                       yaxis = list(title = var))}
+
+transaction_plot <- create_interactive_barplot("transaction_type")
+party_plot <- create_interactive_barplot("party")
+state_plot <- create_interactive_barplot("state")
+gender_plot <- create_interactive_barplot("gender")
+
+transaction_plot
+party_plot
+state_plot
+gender_plot
+```
+
+# Create columns to define success
+```{r, message=FALSE, warning=FALSE}
+define_trade_success = function(row) {
+                          if (row$transaction_type %in% c("Purchase")) {
+                            return(ifelse(row$price_change_pct > 0, 1, 0))} 
+                          else if (row$transaction_type %in% c("Sale", "Sale (Partial)", "Sale (Full)")) {
+                            return(ifelse(row$price_change_pct < 0, 1, 0))}                       
+                          else {return(NA)}}
+
+df = df %>%
+     rowwise() %>%
+     mutate(trade_success = define_trade_success(cur_data())) %>%
+     ungroup() %>%
+     filter(!is.na(trade_success))  
+
+define_market_success = function(row) {
+                            if (row$transaction_type %in% c("Purchase")) {
+                              return(ifelse(row$excess_return > 0, 1, 0))} 
+                            else if (row$transaction_type %in% c("Sale", "Sale (Partial)", "Sale (Full)")) {
+                              return(ifelse(row$excess_return < 0 & row$price_change_pct < 0, 1, 0))} 
+                            else {return(NA)}}
+
+df = df %>%
+     rowwise() %>%
+     mutate(market_success = define_market_success(cur_data())) %>%
+     ungroup() %>%
+     filter(!is.na(market_success)) 
+```
+
+### Visualization for distribution of success
+```{r, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+success_colors = c("0" = "red", "1" = "green")
+
+success_plot = ggplot(df, aes(x = factor(trade_success), 
+                              fill = factor(trade_success))) + geom_bar() +
+                              scale_fill_manual(values = success_colors, labels = c("0: Unsuccessful", "1: Successful")) +
+                              labs(title = "Distribution of Trade Success Outcomes",
+                                   x = "Trade Success", y = "Count", fill = "Outcome") +
+                              theme(plot.title = element_text(hjust = 0.5, size = 14),
+                                    axis.text = element_text(size = 10),
+                                    axis.title = element_text(size = 12),
+                                    legend.position = "top")
+
+market_success_plot = ggplot(df, aes(x = factor(market_success), 
+                                      fill = factor(market_success))) + geom_bar() +
+                              scale_fill_manual(values = success_colors, labels = c("0: Unsuccessful", "1: Successful")) +
+                                      labs(title = "Distribution of Market Success Outcomes",
+                                           x = "Market Success", y = "Count", fill = "Outcome") +
+                                      theme(plot.title = element_text(hjust = 0.5, size = 14),
+                                            axis.text = element_text(size = 10),
+                                            axis.title = element_text(size = 12),
+                                            legend.position = "top" )
+
+grid.arrange(success_plot, market_success_plot, ncol = 2)
+```
+
+# Committee Success Rates with Confidence Intervals
+```{r, message=FALSE, warning=FALSE}
+z = qnorm(0.975) 
+
+compute_confidence_interval = function(successes, total) {
+                                  p = successes / total
+                                  se = sqrt(p * (1 - p) / total)
+                                  lower = max(0, p - z * se) 
+                                  upper = min(1, p + z * se)  
+                                  return(list(proportion = p, lower_bound = lower, upper_bound = upper))}
+
+committee_columns = grep("committee_", colnames(df), value = TRUE)
+
+committee_success_rates = data.frame(committee = character(),
+                                     success_rate = numeric(),
+                                     lower_ci = numeric(),
+                                     upper_ci = numeric(),
+                                     total_trades = integer(),
+                                     stringsAsFactors = FALSE)
+
+for (committee in committee_columns) {committee_name = gsub("committee_", "", committee)  
+                                      committee_data = df %>% filter(.data[[committee]] == 1)
+                                      total_trades = nrow(committee_data)
+                                      successes = nrow(committee_data %>% filter(trade_success == 1))
+                                      
+                                      if (total_trades > 0) {
+                                        ci = compute_confidence_interval(successes, total_trades)
+                                        committee_success_rates = rbind(committee_success_rates,
+                                                                        data.frame(committee = committee_name,
+                                                                                   success_rate = ci$proportion,
+                                                                                   lower_ci = ci$lower_bound,
+                                                                                   upper_ci = ci$upper_bound,
+                                                                                   total_trades = total_trades))} 
+                                      else {committee_success_rates = rbind(committee_success_rates,
+                                                                            data.frame(committee = committee_name,
+                                                                                       success_rate = NA,
+                                                                                       lower_ci = NA,
+                                                                                       upper_ci = NA,
+                                                                                       total_trades = total_trades))}}
+
+committee_success_rates = committee_success_rates %>% filter(!is.na(success_rate))
+committee_success_rates = committee_success_rates %>% arrange(desc(success_rate))
+
+ggplot(committee_success_rates, aes(x = success_rate, y = reorder(committee, success_rate))) +
+                                geom_bar(stat = "identity", fill = "skyblue", width = 0.8) +
+                                geom_errorbar(aes(xmin = lower_ci, xmax = upper_ci),
+                                              width = 0.2, color = "black") +
+                                labs(title = "Success Rate by Committee with Confidence Intervals",
+                                     x = "Success Rate", y = "Committee") + theme_minimal() +
+                                theme(plot.title = element_text(hjust = 0.5, size = 16, margin = margin(b = 10)),
+                                      axis.text = element_text(size = 10),
+                                      axis.title = element_text(size = 12))
+```
+
+```{r, message=FALSE, warning=FALSE}
+max_trades = max(committee_success_rates$total_trades, na.rm = TRUE)
+                 committee_success_rates = committee_success_rates %>%
+                 mutate(bubble_size = total_trades / max_trades * 1000)  
+
+ggplot(committee_success_rates, aes(x = success_rate, y = reorder(committee, success_rate), size = bubble_size)) +
+                                geom_point(alpha = 0.6, color = "steelblue") +  
+                                scale_size_continuous(range = c(3, 20), 
+                                                      name = "Number of Trades",  
+                                                      breaks = c(100, 500, 1000),  
+                                                      labels = c("100 trades", "500 trades", "1000 trades")) +
+                                labs(title = "Success Rate by Committee (Bubble Size = Number of Trades)",
+                                     x = "Success Rate", y = "Committee") +
+                                theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
+                                                        axis.text = element_text(size = 10),
+                                                        axis.title = element_text(size = 12),
+                                                        legend.position = "right" )
+```
+
+```{r, message=FALSE, warning=FALSE}
+min_trades = 30
+
+filtered_committee_df = committee_success_rates %>%
+                        filter(total_trades >= min_trades)
+
+ggplot(filtered_committee_df, aes(x = success_rate, y = reorder(committee, success_rate))) +
+                              geom_bar(stat = "identity", fill = "skyblue", width = 0.8) + 
+                              labs(title = paste("Success Rate by Committee (Minimum", min_trades, "Trades)"),
+                                   x = "Success Rate", y = "Committee") + theme_minimal() +
+                              theme(plot.title = element_text(hjust = 0.5, size = 16, margin = margin(b = 10)),
+                                    axis.text = element_text(size = 10),
+                                    axis.title = element_text(size = 12),
+                                    plot.margin = margin(t = 20, r = 20, b = 20, l = 20))
+```
+
+```{r, message=FALSE, warning=FALSE}
+min_trades = 30
+
+sector_success_rates = df %>% filter(!is.na(sector)) %>%
+                       group_by(sector) %>%
+                       summarise(total_trades = n(),
+                                 successes = sum(trade_success, na.rm = TRUE),
+                                 .groups = "drop") %>%
+                       rowwise() %>%
+                       mutate(ci = list(compute_confidence_interval(successes, total_trades)),
+                              success_rate = ci$proportion,
+                              lower_ci = ci$lower_bound,
+                              upper_ci = ci$upper_bound) %>%
+                       unnest_wider(ci) %>%
+                       filter(total_trades >= min_trades) 
+
+ggplot(sector_success_rates, aes(x = success_rate, y = reorder(sector, success_rate))) +
+                             geom_bar(stat = "identity", fill = "skyblue", width = 0.8) +
+                             geom_errorbar(aes(xmin = lower_ci, xmax = upper_ci),
+                                           width = 0.2, color = "black") +
+                             geom_text(aes(label = paste0(total_trades, " trades"), x = success_rate + 0.01),
+                                       hjust = 0, size = 3) +
+                             labs(title = "Success Rate by Sector with Confidence Intervals",
+                             x = "Success Rate", y = "Sector") +
+                             theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
+                                                     axis.text = element_text(size = 10),
+                                                     axis.title = element_text(size = 12),
+                                                     plot.margin = margin(t = 20, r = 20, b = 20, l = 20))
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+```
