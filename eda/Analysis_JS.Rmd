@@ -74,6 +74,7 @@ betaHatLasso = coef(lassoOut,s='lambda.min')
 Slasso = which(abs(betaHatLasso) > 1e-16)
 ```
 
+<<<<<<< HEAD
 
 ```{r}
 require(corrplot)
@@ -154,3 +155,5 @@ legislators_current <- read.csv('..//data//legislators-current.csv')
 legislators_historical <- read.csv('..//data//legislators-historical.csv')
 ```
 
+=======
+>>>>>>> 8daf356737664586ea2536b37887c2ff8ce02a14
