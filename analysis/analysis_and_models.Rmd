@@ -499,16 +499,34 @@ train_index = createDataPartition(dataset$trade_success, p = 0.8, list = FALSE)
 
 train_data = dataset[train_index, ]
 test_data = dataset[-train_index, ]
-
-X_train = as.matrix(train_data[, setdiff(names(train_data), "trade_success")])
+```
+```{r}
+X_train = as.matrix(train_data[-trade_success])
 y_train = train_data$trade_success
 
 X_test = as.matrix(test_data[, setdiff(names(test_data), "trade_success")])
 y_test = test_data$trade_success
 ```
 
+
+```{r}
+X_train = train_data[, -255]
+Y_train = train_data$trade_success
+
+X_test = as.matrix(test_data[, -255])
+Y_test = test_data$trade_success
+```
+
+
+#Imputing all the NA's (which are only in sectors/industries to be 0)
+```{r}
+X_train_impute <- X_train %>% 
+  mutate_all(~replace(., is.na(.), 0))
+```
+
+#Lasso
 ```{r, message=FALSE, warning=FALSE}
-model = cv.glmnet(X_train, y_train,
+model = cv.glmnet(as.matrix(X_train_impute), Y_train,
                   family = "binomial", 
                   alpha = 1,          
                   lambda = NULL,       
@@ -524,7 +542,7 @@ print(paste("Best Lambda:", best_lambda))
 predictions = predict(model, X_test, s = best_lambda, type = "response")
 predicted_classes = ifelse(predictions > 0.5, 1, 0)
 
-confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(y_test))
+confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(Y_test))
 print(confusion_matrix)
 ```
 
@@ -540,25 +558,83 @@ significant_coefficients = significant_coefficients[order(abs(significant_coeffi
 cat("Significant Predictors:\n")
 print(significant_coefficients)
 ```
-
+#Truncating the matrix to remove all sectors and industries
 ```{r, message=FALSE, warning=FALSE}
-
+X_train_trunc <- X_train[,-c(103:254)]
+X_test_trunc <- X_test[, -c(103:254)]
 ```
 
 ```{r, message=FALSE, warning=FALSE}
+model = cv.glmnet(as.matrix(X_train_trunc), Y_train,
+                  family = "binomial", 
+                  alpha = 1,          
+                  lambda = NULL,       
+                  standardize = TRUE,
+                  type.measure = "class",
+                  nfolds = 10)
 
+best_lambda = model$lambda.min
+print(paste("Best Lambda:", best_lambda))
 ```
 
 ```{r, message=FALSE, warning=FALSE}
+predictions = predict(model, X_test_trunc, s = best_lambda, type = "response")
+predicted_classes = ifelse(predictions > 0.5, 1, 0)
 
+confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(Y_test))
+print(confusion_matrix)
 ```
 
 ```{r, message=FALSE, warning=FALSE}
+coefficients = coef(model, s = best_lambda) 
+coefficients = as.matrix(coefficients)
 
+coefficients = setNames(coefficients[, 1], rownames(coefficients))
+significant_coefficients = coefficients[coefficients != 0]
+
+significant_coefficients = significant_coefficients[order(abs(significant_coefficients), decreasing = TRUE)]
+
+cat("Significant Predictors:\n")
+print(significant_coefficients)
+```
+#Doing Ridge, but with only committees as features
+```{r, message=FALSE, warning=FALSE}
+X_train_select <- X_train[, -c(1,57:254)]
+X_test_select <- X_test[, -c(1,57:254)]
 ```
 
 ```{r, message=FALSE, warning=FALSE}
+model = cv.glmnet(as.matrix(X_train_select), Y_train,
+                  family = "binomial", 
+                  alpha = 1,          
+                  lambda = NULL,       
+                  standardize = TRUE,
+                  type.measure = "class",
+                  nfolds = 10)
 
+best_lambda = model$lambda.min
+print(paste("Best Lambda:", best_lambda))
+```
+
+```{r, message=FALSE, warning=FALSE}
+predictions = predict(model, X_test_select, s = best_lambda, type = "response")
+predicted_classes = ifelse(predictions > 0.5, 1, 0)
+
+confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(Y_test))
+print(confusion_matrix)
+```
+
+```{r, message=FALSE, warning=FALSE}
+coefficients = coef(model, s = best_lambda) 
+coefficients = as.matrix(coefficients)
+
+coefficients = setNames(coefficients[, 1], rownames(coefficients))
+significant_coefficients = coefficients[coefficients != 0]
+
+significant_coefficients = significant_coefficients[order(abs(significant_coefficients), decreasing = TRUE)]
+
+cat("Significant Predictors:\n")
+print(significant_coefficients)
 ```
 
 ```{r, message=FALSE, warning=FALSE}

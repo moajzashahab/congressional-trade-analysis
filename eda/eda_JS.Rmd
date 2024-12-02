@@ -1,0 +1,25 @@
+---
+title: "eda_JS"
+output: pdf_document
+date: "2024-12-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(dplyr)
+require(caret)
+```
+
+
+```{r}
+df <- read.csv('..//data//master_df.csv')
+comm_assign <- read.csv('..//data//committee_assignments.csv')
+```
+
+```{r}
+
+```
+
