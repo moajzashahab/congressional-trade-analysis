@@ -484,10 +484,16 @@ numerical_vars = c("seniority_years", "trade_price")
 columns_to_drop = c('trade_id', 'trade_success', 'trade_date', 'bioguideID', 'transaction_type',
                      'price_365_days_after_trade', 'price_change_pct', 'congress_num', 'market_return',
                      'term_start', 'excess_return', 'market_success')
+
+
 lr_df = dummy_cols(df,
                 select_columns = categorical_vars,
                 remove_first_dummy = TRUE, 
                 remove_selected_columns = TRUE)
+
+
+#we had a names issue so I have to change the names of the dataframe
+names(lr_df) <- make.names(names(lr_df))
 
 X = lr_df %>% select(-all_of(columns_to_drop))
 y = lr_df %>% pull(trade_success)
@@ -500,20 +506,15 @@ train_index = createDataPartition(dataset$trade_success, p = 0.8, list = FALSE)
 train_data = dataset[train_index, ]
 test_data = dataset[-train_index, ]
 ```
-```{r}
-X_train = as.matrix(train_data[-trade_success])
-y_train = train_data$trade_success
 
-X_test = as.matrix(test_data[, setdiff(names(test_data), "trade_success")])
-y_test = test_data$trade_success
-```
+#we had a names issue so I have to change the names of the dataframe
 
 
 ```{r}
-X_train = train_data[, -255]
+X_train = train_data[, -ncol(train_data)]
 Y_train = train_data$trade_success
 
-X_test = as.matrix(test_data[, -255])
+X_test = test_data[, -ncol(train_data)]
 Y_test = test_data$trade_success
 ```
 
@@ -521,6 +522,8 @@ Y_test = test_data$trade_success
 #Imputing all the NA's (which are only in sectors/industries to be 0)
 ```{r}
 X_train_impute <- X_train %>% 
+  mutate_all(~replace(., is.na(.), 0))
+X_test_impute <- X_test %>%
   mutate_all(~replace(., is.na(.), 0))
 ```
 
@@ -539,7 +542,7 @@ print(paste("Best Lambda:", best_lambda))
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-predictions = predict(model, X_test, s = best_lambda, type = "response")
+predictions = predict(model, as.matrix(X_test_impute), s = best_lambda, type = "response")
 predicted_classes = ifelse(predictions > 0.5, 1, 0)
 
 confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(Y_test))
@@ -559,9 +562,10 @@ cat("Significant Predictors:\n")
 print(significant_coefficients)
 ```
 #Truncating the matrix to remove all sectors and industries
+
 ```{r, message=FALSE, warning=FALSE}
-X_train_trunc <- X_train[,-c(103:254)]
-X_test_trunc <- X_test[, -c(103:254)]
+X_train_trunc <- X_train[, -c(107:258)]
+X_test_trunc <- X_test[, -c(107:258)]
 ```
 
 ```{r, message=FALSE, warning=FALSE}
@@ -578,7 +582,7 @@ print(paste("Best Lambda:", best_lambda))
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-predictions = predict(model, X_test_trunc, s = best_lambda, type = "response")
+predictions = predict(model, as.matrix(X_test_trunc), s = best_lambda, type = "response")
 predicted_classes = ifelse(predictions > 0.5, 1, 0)
 
 confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(Y_test))
@@ -597,7 +601,7 @@ significant_coefficients = significant_coefficients[order(abs(significant_coeffi
 cat("Significant Predictors:\n")
 print(significant_coefficients)
 ```
-#Doing Ridge, but with only committees as features
+#Doing Lasso, but with only committees as features
 ```{r, message=FALSE, warning=FALSE}
 X_train_select <- X_train[, -c(1,57:254)]
 X_test_select <- X_test[, -c(1,57:254)]
@@ -617,7 +621,7 @@ print(paste("Best Lambda:", best_lambda))
 ```
 
 ```{r, message=FALSE, warning=FALSE}
-predictions = predict(model, X_test_select, s = best_lambda, type = "response")
+predictions = predict(model, as.matrix(X_test_select), s = best_lambda, type = "response")
 predicted_classes = ifelse(predictions > 0.5, 1, 0)
 
 confusion_matrix = confusionMatrix(as.factor(predicted_classes), as.factor(Y_test))
@@ -637,38 +641,80 @@ cat("Significant Predictors:\n")
 print(significant_coefficients)
 ```
 
-```{r, message=FALSE, warning=FALSE}
 
+
+#Random Forest Models 
+```{r, message=FALSE, warning=FALSE}
+library(randomForest)
+library(ranger)
 ```
 
-```{r, message=FALSE, warning=FALSE}
 
+
+```{r}
+train_data_impute <- cbind(X_train_impute, as.factor(Y_train))
+colnames(train_data_impute)[ncol(train_data_impute)] <- 'trade_success'
+test_data_impute <- cbind(X_test_impute, as.factor(Y_test))
+colnames(test_data_impute)[ncol(train_data_impute)] <- 'trade_success'
+
+train_data_trunc <- cbind(X_train_trunc, Y_train)
+colnames(train_data_trunc)[ncol(train_data_trunc)] <- 'trade_success'
+test_data_trunc <- cbind(X_test_trunc, as.factor(Y_test))
+colnames(test_data_trunc)[ncol(train_data_trunc)] <- 'trade_success'
+
+train_data_select <- cbind(X_train_select, Y_train)
+colnames(train_data_select)[ncol(train_data_select)] <- 'trade_success'
+test_data_select <- cbind(X_test_select, as.factor(Y_test))
+colnames(test_data_select)[ncol(train_data_select)] <- 'trade_success'
 ```
 
-```{r, message=FALSE, warning=FALSE}
 
+
+
+```{r, message=FALSE, warning=FALSE}
+ranger_model <- ranger(trade_success ~ ., data=train_data_impute, mtry = sqrt(258), importance = 'permutation' )
+``` 
+
+
+
+```{r}
+predictions = predict(ranger_model, test_data_impute, type = "response")
+
+confusion_matrix = confusionMatrix(as.factor(predictions$predictions), as.factor(Y_test))
+print(confusion_matrix)
+```
+```{r}
+head(sort(ranger_model$variable.importance, decreasing=T))
 ```
 
-```{r, message=FALSE, warning=FALSE}
 
+```{r, message=FALSE, warning=FALSE}
+ranger_model <- ranger(as.factor(trade_success) ~ ., data=train_data_trunc, mtry = sqrt(258), importance = 'permutation' )
+``` 
+
+```{r}
+predictions = predict(ranger_model, test_data_trunc, type = "response")
+
+confusion_matrix = confusionMatrix(as.factor(predictions$predictions), as.factor(Y_test))
+print(confusion_matrix)
 ```
 
-```{r, message=FALSE, warning=FALSE}
-
+```{r}
+head(sort(ranger_model$variable.importance, decreasing=T))
 ```
 
-```{r, message=FALSE, warning=FALSE}
 
+```{r, message=FALSE, warning=FALSE}
+ranger_model <- ranger(as.factor(trade_success) ~ ., data=train_data_select, mtry = sqrt(258), importance = 'permutation' )
+``` 
+
+```{r}
+predictions = predict(ranger_model, test_data_select, type = "response")
+
+confusion_matrix = confusionMatrix(as.factor(predictions$predictions), as.factor(Y_test))
+print(confusion_matrix)
 ```
 
-```{r, message=FALSE, warning=FALSE}
-
-```
-
-```{r, message=FALSE, warning=FALSE}
-
-```
-
-```{r, message=FALSE, warning=FALSE}
-
+```{r}
+head(sort(ranger_model$variable.importance, decreasing=T))
 ```
