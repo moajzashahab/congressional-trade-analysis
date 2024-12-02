@@ -197,6 +197,25 @@ ui = fluidPage(titlePanel("Congressional Trade Analysis"),
                              hr(),
                              h3("Correlation Matrix of Committee Memberships"),
                              plotOutput("committee_correlation_plot", height = "600px"))
+                    # [ TO DO ] - Add model panel
+                    # ,tabPanel("Models", 
+                    #           sidebarLayout(sidebarPanel(h4("Model Selection"),
+                    #                                      selectInput("model_type", "Choose a Model:",
+                    #                                                  choices = c("Lasso Regression", 
+                    #                                                              "Ridge Regression", 
+                    #                                                              "Random Forest"),
+                    #                                                  selected = "Lasso Regression"),
+                    #           actionButton("run_model", "Run Model"),
+                    #           hr(),
+                    #           h4("Metrics"),
+                    #           verbatimTextOutput("model_metrics")),
+                    #           mainPanel(h3("Model Coefficients / Importance"),
+                    #                     plotOutput("model_coefficients", height = "400px"),
+                    #                     hr(),
+                    #                     h3("Model Performance"),
+                    #                     plotOutput("model_performance", height = "400px"),
+                    #                     h3("Model Comparison"),
+                    #                     tableOutput("model_comparison"))))
                     ))
 
 # set up back-end 
@@ -428,6 +447,43 @@ server = function(input, output, session) {
                                                  theme(plot.title = element_text(hjust = 0.5, size = 16),
                                                        axis.text = element_text(size = 8),
                                                        axis.title = element_text(size = 8))})
+            
+            # [TO DO] - Replace with code for models
+            # observeEvent(input$run_model, {model_type <- input$model_type
+            #              isolate({if (model_type == "Lasso Regression") {
+            #                         model = "Placeholder Lasso Model"} 
+            #                       else if (model_type == "Ridge Regression") {
+            #                         model = "Placeholder Ridge Model"} 
+            #                       else if (model_type == "Random Forest") {
+            #                         model = "Placeholder Random Forest Model"}
+            #                model_results(model)})})
+            # 
+            # output$model_metrics = renderPrint({if (is.null(model_results())) {
+            #                                       "No model has been run yet."}
+            #                                    else {paste("Metrics for", input$model_type, ": Placeholder metrics")}})
+            # 
+            # output$model_coefficients = renderPlot({if (is.null(model_results())) {
+            #                                           plot(1, 1, main = "No Model Coefficients to Display", type = "n")} 
+            #                                         else {ggplot(data.frame(x = c("Feature 1", "Feature 2"), 
+            #                                                                 y = c(0.5, -0.3)), aes(x = x, y = y)) +
+            #                                               geom_bar(stat = "identity") +
+            #                                               labs(title = "Placeholder Coefficients", 
+            #                                                    x = "Features", y = "Coefficient") +
+            #                                               theme_minimal()}})
+            # 
+            # output$model_performance = renderPlot({if (is.null(model_results())) {
+            #                                          plot(1, 1, main = "No Model Performance to Display", type = "n")} 
+            #                                        else {ggplot(data.frame(x = c(0, 0.5, 1), 
+            #                                                                y = c(0, 0.8, 1)), 
+            #                                                     aes(x = x, y = y)) +
+            #                                              geom_line() +
+            #                                            labs(title = "Placeholder Performance Curve", 
+            #                                                 x = "False Positive Rate", y = "True Positive Rate") +
+            #                                            theme_minimal()}})
+            # 
+            # output$model_comparison = renderTable({data.frame(Model = c("Lasso", "Ridge", "Random Forest"),
+            #                                                   Accuracy = c(0.85, 0.83, 0.87),
+            #                                                   AUC = c(0.9, 0.88, 0.91))})
             }
 
 # run app                        
