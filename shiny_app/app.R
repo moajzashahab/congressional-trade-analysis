@@ -10,8 +10,7 @@ library(GGally)
 library(ggcorrplot)
 
 # read in data
-file_path = "../data/master_df.xlsx"
-df = read_excel(file_path)
+df = readRDS("data/embedded_data.rds")
 
 # set up variables
 min_trades = 30
