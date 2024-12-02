@@ -10,7 +10,7 @@ library(GGally)
 library(ggcorrplot)
 
 # read in data
-df = readRDS("data/embedded_data.rds")
+df = readRDS("embedded_data.rds")
 
 # set up variables
 min_trades = 30
@@ -43,13 +43,13 @@ compute_confidence_interval = function(successes, total) {p = successes / total
                                   return(list(proportion = p, lower_bound = lower, upper_bound = upper))}
 
 # data processing
-df = df %>% rowwise() %>%
-    mutate(trade_success = define_trade_success(cur_data())) %>%
-    ungroup() %>% filter(!is.na(trade_success))  
+df = df %>% dplyr::rowwise() %>%
+     dplyr::mutate(trade_success = define_trade_success(dplyr::cur_data())) %>%
+     dplyr::ungroup() %>% dplyr::filter(!is.na(trade_success))  
 
-df = df %>% rowwise() %>%
-     mutate(market_success = define_market_success(cur_data())) %>%
-     ungroup() %>% filter(!is.na(market_success)) 
+df = df %>% dplyr::rowwise() %>%
+     dplyr::mutate(market_success = define_market_success(dplyr::cur_data())) %>%
+     dplyr::ungroup() %>% dplyr::filter(!is.na(market_success)) 
 
 df = df %>% mutate(party_encoded = as.numeric(as.factor(party)), gender_encoded = as.numeric(as.factor(gender)))
 df = df %>% mutate(num_committees = rowSums(select(., starts_with("committee_")), na.rm = TRUE))
@@ -67,9 +67,9 @@ committee_success_rates = data.frame(committee = character(),
                                      stringsAsFactors = FALSE)
 
 for (committee in committee_columns) {committee_name = gsub("committee_", "", committee)  
-        committee_data = df %>% filter(.data[[committee]] == 1)
+        committee_data = df %>% dplyr::filter(.data[[committee]] == 1)
         total_trades = nrow(committee_data)
-        successes = nrow(committee_data %>% filter(trade_success == 1))
+        successes = nrow(committee_data %>% dplyr::filter(trade_success == 1))
 
 if (total_trades > 0) {
         ci = compute_confidence_interval(successes, total_trades)
@@ -231,8 +231,8 @@ server = function(input, output, session) {
             output$static_histograms = renderPlot({create_histogram = function(var) {
                                           ggplot(df, aes(x = .data[[var]])) +
                                           geom_histogram(aes(y = ..density..), 
-                                                         bins = 30, fill = "blue", color = "black", alpha = 0.7) +
-                                          geom_density(color = "red", size = 1) +
+                                                         bins = 30, fill = "royalblue1", color = "black", alpha = 0.7) +
+                                          geom_density(color = "indianred", size = 1) +
                                           labs(title = paste("Distribution of", var), x = var, y = "Density") +
                                           theme_minimal() +
                                           theme(plot.title = element_text(hjust = 0.5, size = 14),
@@ -247,14 +247,14 @@ server = function(input, output, session) {
                                                         y = ~reorder(.data[[var]], table(.data[[var]])[.data[[var]]]),
                                                         type = "bar",
                                                         orientation = "h",
-                                                        marker = list(color = "steelblue")) %>%
+                                                        marker = list(color = "royalblue1")) %>%
                                                 layout(title = paste("Distribution of", var),
                                                        xaxis = list(title = "Count"),
                                                        yaxis = list(title = var))}
                                             create_interactive_barplot(input$barplot_variable)})
             
             output$success_plots = renderPlot({
-                                      success_colors = c("0" = "red", "1" = "green")
+                                      success_colors = c("0" = "indianred", "1" = "seagreen")
                                       
                                       success_plot = ggplot(df, aes(x = factor(trade_success), fill = factor(trade_success))) +
                                                      geom_bar() +
@@ -283,7 +283,7 @@ server = function(input, output, session) {
             
             output$committee_bar_chart = renderPlot({ggplot(committee_success_rates, 
                                                             aes(x = success_rate, y = reorder(committee, success_rate))) +
-                                                     geom_bar(stat = "identity", fill = "skyblue", width = 0.8) +
+                                                     geom_bar(stat = "identity", fill = "darkseagreen3", width = 0.8) +
                                                      geom_errorbar(aes(xmin = lower_ci, xmax = upper_ci), 
                                                                    width = 0.2, color = "black") +
                                                      labs(title = "Success Rate by Committee with Confidence Intervals",
@@ -313,7 +313,7 @@ server = function(input, output, session) {
             
             output$filtered_committee_plot = renderPlot({ggplot(filtered_committee_df, 
                                                                 aes(x = success_rate, y = reorder(committee, success_rate))) +
-                                                         geom_bar(stat = "identity", fill = "skyblue", width = 0.8) +
+                                                         geom_bar(stat = "identity", fill = "tomato3", width = 0.8) +
                                                          labs(title = paste("Success Rate by Committee (Minimum", min_trades, "Trades)"),
                                                               x = "Success Rate", y = "Committee") +
                                                          theme_minimal() + 
@@ -325,7 +325,7 @@ server = function(input, output, session) {
             
             output$sector_success_plot = renderPlot({ggplot(sector_success_rates, 
                                                             aes(x = success_rate, y = reorder(sector, success_rate))) +
-                                                     geom_bar(stat = "identity", fill = "skyblue", width = 0.8) +
+                                                     geom_bar(stat = "identity", fill = "orange2", width = 0.8) +
                                                      geom_errorbar(aes(xmin = lower_ci, xmax = upper_ci), 
                                                                    width = 0.2, color = "black") +
                                                      geom_text(aes(label = paste0(total_trades, " trades"), 
@@ -340,7 +340,7 @@ server = function(input, output, session) {
             
             output$success_vs_seniority_jitter = renderPlot({ggplot(df, aes(x = seniority_years, y = trade_success)) +
                                                              geom_jitter(width = 0.2, height = 0.05, 
-                                                                         color = "blue", alpha = 0.6) +
+                                                                         color = "springgreen4", alpha = 0.6) +
                                                              labs(title = "Success vs. Seniority Years", x = "Seniority (Years)", 
                                                                   y = "Success (1 = Successful Trade)") + theme_minimal() +
                                                              theme(plot.title = element_text(hjust = 0.5, size = 14),
@@ -348,7 +348,7 @@ server = function(input, output, session) {
                                                                    axis.title = element_text(size = 12))})
             
             output$success_vs_seniority_boxplot = renderPlot({ggplot(df, aes(x = factor(trade_success), y = seniority_years)) +
-                                                              geom_boxplot(fill = "skyblue", color = "black", width = 0.5) +
+                                                              geom_boxplot(fill = "mediumpurple3", color = "black", width = 0.5) +
                                                               labs(title = "Seniority Years by Success",
                                                                    x = "Success (0 = Unsuccessful, 1 = Successful)",
                                                                    y = "Seniority (Years)") + theme_minimal() +
@@ -357,7 +357,7 @@ server = function(input, output, session) {
                                                                     axis.title = element_text(size = 12))})
             
             output$party_success_plot = renderPlot({ggplot(party_success, aes(x = party, y = average_success_rate)) +
-                                                    geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+                                                    geom_bar(stat = "identity", fill = "deepskyblue3", color = "black") +
                                                     labs(title = "Success Rate by Party", x = "Party", 
                                                          y = "Average Success Rate") + theme_minimal() +
                                                     theme(plot.title = element_text(hjust = 0.5, size = 14),
@@ -374,7 +374,7 @@ server = function(input, output, session) {
             
             output$correlation_matrix_plot = renderPlot({ggcorrplot(corr_matrix, method = "square", type = "full",
                                                                     lab = TRUE, lab_size = 4, 
-                                                                    colors = c("red", "white", "blue"),
+                                                                    colors = c("indianred2", "white", "grey22"),
                                                                     title = "Correlation Matrix",
                                                                     legend.title = "Correlation") +
                                                          theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
@@ -382,7 +382,7 @@ server = function(input, output, session) {
                                                                                  axis.text.x = element_text(angle = 45, hjust = 1))})
             
             output$committee_correlation_plot = renderPlot({ggcorrplot(committee_corr, method = "square", type = "full",
-                                                                       lab = FALSE, colors = c("red", "white", "blue"),
+                                                                       lab = FALSE, colors = c("indianred2", "white", "grey22"),
                                                                        title = "Correlation Matrix of Committee Memberships",
                                                                        legend.title = "Correlation") +
                                                             theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
@@ -402,8 +402,8 @@ server = function(input, output, session) {
             
             output$trades_over_time = renderPlot({ggplot(trades_per_year, 
                                                          aes(x = as.numeric(trade_year), y = num_trades)) +
-                                                  geom_line(group = 1, color = "blue", size = 1) +
-                                                  geom_point(color = "red", size = 2) +
+                                                  geom_line(group = 1, color = "lightgoldenrod2", size = 1) +
+                                                  geom_point(color = "firebrick1", size = 2) +
                                                   labs(title = "Number of Trades Over Time",
                                                        x = "Year", y = "Number of Trades") +
                                                   theme_minimal() +
@@ -413,8 +413,8 @@ server = function(input, output, session) {
             
             output$success_rate_over_time = renderPlot({ggplot(success_per_year, 
                                                                aes(x = as.numeric(trade_year), y = avg_success_rate)) +
-                                                        geom_line(group = 1, color = "blue", size = 1) +
-                                                        geom_point(color = "red", size = 2) +
+                                                        geom_line(group = 1, color = "forestgreen", size = 1) +
+                                                        geom_point(color = "cadetblue3", size = 2) +
                                                         labs(title = "Success Rate Over Time", x = "Year",
                                                              y = "Average Success Rate") +
                                                         theme_minimal() + theme(plot.title = element_text(hjust = 0.5, size = 16),
@@ -423,7 +423,7 @@ server = function(input, output, session) {
             
             output$success_by_sector = renderPlot({ggplot(sector_success, 
                                                           aes(x = avg_success_rate, y = reorder(sector, avg_success_rate))) +
-                                                   geom_bar(stat = "identity", fill = "darkorange", color = "black") +
+                                                   geom_bar(stat = "identity", fill = "coral", color = "black") +
                                                    labs(title = "Success Rate by Sector", x = "Average Success Rate",
                                                         y = "Sector") + theme_minimal() +
                                                    theme(plot.title = element_text(hjust = 0.5, size = 16),
@@ -432,7 +432,7 @@ server = function(input, output, session) {
             
             output$num_trades_by_sector = renderPlot({ggplot(sector_counts, 
                                                              aes(x = num_trades, y = reorder(sector, num_trades))) +
-                                                      geom_bar(stat = "identity", fill = "purple", color = "black") +
+                                                      geom_bar(stat = "identity", fill = "orchid", color = "black") +
                                                       labs(title = "Number of Trades by Sector", x = "Number of Trades",
                                                            y = "Sector") + theme_minimal() +
                                                       theme(plot.title = element_text(hjust = 0.5, size = 16),
@@ -440,7 +440,7 @@ server = function(input, output, session) {
                                                             axis.title = element_text(size = 12))})
             
             output$success_by_rank = renderPlot({ggplot(rank_success, aes(x = Rank, y = avg_success_rate)) +
-                                                 geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+                                                 geom_bar(stat = "identity", fill = "peachpuff2", color = "black") +
                                                  labs(title = "Success Rate by Rank", x = "Rank", 
                                                       y = "Average Success Rate") + theme_minimal() +
                                                  theme(plot.title = element_text(hjust = 0.5, size = 16),
